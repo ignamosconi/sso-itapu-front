@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import {
-  Box, Title, Text, Button, Table, ActionIcon, Group,
-  Modal, TextInput, PasswordInput, Alert, Loader, Center,
-  Select, Pagination,
+  Box, Title, Text, Button, Table, Group, 
+  TextInput, PasswordInput, Alert, Loader, 
+  Center, Select, Pagination, Modal,
 } from '@mantine/core';
 import {
-  IconPlus, IconTrash, IconAlertCircle, IconSearch,
+  IconPlus, IconAlertCircle, IconSearch,
 } from '@tabler/icons-react';
 import { adminsApi } from '@/api/adminApi';
 import { AdminResponse, CreateAdminPayload } from '@/types/api.types';
@@ -14,7 +14,7 @@ import { useAuthStore } from '@/store/authStore';
 const PAGE_SIZE_OPTIONS = ['5', '10', '20', '50'];
 
 export function AdminsPage() {
-  const { adminId } = useAuthStore();
+  useAuthStore();
   const [admins, setAdmins] = useState<AdminResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,11 +26,6 @@ export function AdminsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formUsernameError, setFormUsernameError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
-
-  // Modal eliminar
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Filtros y paginación
   const [search, setSearch] = useState('');
@@ -94,30 +89,6 @@ export function AdminsPage() {
     }
   };
 
-  // ── Eliminar admin ─────────────────────────────────────────────────────────
-
-  const openDelete = (id: string) => {
-    setDeleteTargetId(id);
-    setDeleteModalOpen(true);
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTargetId) return;
-    setDeleteLoading(true);
-    try {
-      await adminsApi.remove(deleteTargetId);
-      setDeleteModalOpen(false);
-      void load();
-    } catch (err) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setError(axiosError?.response?.data?.message ?? 'Error al eliminar el administrador.');
-      setDeleteModalOpen(false);
-    } finally {
-      setDeleteLoading(false);
-      setDeleteTargetId(null);
-    }
-  };
-
   // ── Filtros y paginación ───────────────────────────────────────────────────
 
   const filtered = admins.filter(a =>
@@ -176,7 +147,6 @@ export function AdminsPage() {
               <Table.Tr>
                 <Table.Th>Usuario</Table.Th>
                 <Table.Th>Creado</Table.Th>
-                <Table.Th>Acciones</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -184,17 +154,6 @@ export function AdminsPage() {
                 <Table.Tr key={admin.id}>
                   <Table.Td>{admin.username}</Table.Td>
                   <Table.Td>{new Date(admin.createdAt).toLocaleDateString('es-AR')}</Table.Td>
-                  <Table.Td>
-                    {admin.id !== adminId && (
-                      <ActionIcon
-                        variant="subtle"
-                        color="red"
-                        onClick={() => openDelete(admin.id)}
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    )}
-                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -251,26 +210,6 @@ export function AdminsPage() {
         </form>
       </Modal>
 
-      {/* ── Modal confirmar eliminación ── */}
-      <Modal
-        opened={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        title="Eliminar administrador"
-        centered
-        size="sm"
-      >
-        <Text size="sm" mb="lg">
-          ¿Estás seguro de que querés eliminar este administrador? Esta acción es irreversible.
-        </Text>
-        <Group justify="flex-end" gap="sm">
-          <Button variant="subtle" onClick={() => setDeleteModalOpen(false)}>
-            Cancelar
-          </Button>
-          <Button color="red" loading={deleteLoading} onClick={() => void handleDelete()}>
-            Eliminar
-          </Button>
-        </Group>
-      </Modal>
     </Box>
   );
 }
