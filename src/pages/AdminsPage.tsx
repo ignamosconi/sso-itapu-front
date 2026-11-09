@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Box, Title, Text, Button, Table, Group, 
   TextInput, PasswordInput, Alert, Loader, 
-  Center, Select, Pagination, Modal,
+  Center, Select, Pagination, Modal
 } from '@mantine/core';
 import {
   IconPlus, IconAlertCircle, IconSearch,
@@ -23,10 +23,8 @@ export function AdminsPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [formUsername, setFormUsername] = useState('');
   const [formPassword, setFormPassword] = useState('');
-  const [formConfirmPassword, setFormConfirmPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [formUsernameError, setFormUsernameError] = useState<string | null>(null);
-  const [formConfirmPasswordError, setFormConfirmPasswordError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
   // Filtros y paginación
@@ -52,10 +50,8 @@ export function AdminsPage() {
   const openCreate = () => {
     setFormUsername('');
     setFormPassword('');
-    setFormConfirmPassword('');
     setFormError(null);
     setFormUsernameError(null);
-    setFormConfirmPasswordError(null);
     setCreateModalOpen(true);
   };
 
@@ -73,19 +69,12 @@ export function AdminsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-    setFormConfirmPasswordError(null);
-
     const usernameValidationError = validateUsername(formUsername);
     if (usernameValidationError) {
       setFormUsernameError(usernameValidationError);
+      setFormLoading(false);
       return;
     }
-
-    if (formPassword !== formConfirmPassword) {
-      setFormConfirmPasswordError('Las contraseñas no coinciden.');
-      return;
-    }
-
     setFormLoading(true);
     try {
       const payload: CreateAdminPayload = { username: formUsername, password: formPassword };
@@ -116,7 +105,7 @@ export function AdminsPage() {
         <Box>
           <Title order={2} mb={4}>Administradores</Title>
           <Text c="dimmed" size="sm">
-            Gestioná los usuarios con acceso al panel.  Sólo podés borrar tu propio usuario, en el menú "Mi perfil".
+            Gestioná los usuarios con acceso al panel. Solo podés eliminar admins que no seas vos.
           </Text>
         </Box>
         <Button
@@ -186,52 +175,26 @@ export function AdminsPage() {
           <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{formError}</Alert>
         )}
         <form onSubmit={(e) => void handleCreate(e)}>
-          <TextInput
-            label="Usuario"
-            placeholder="nuevo_admin"
-            value={formUsername}
-            onChange={(e) => {
-              const val = e.target.value;
-              setFormUsername(val);
-              setFormUsernameError(val.length > 0 ? validateUsername(val) : null);
-            }}
-            error={formUsernameError}
-            mb="sm"
-            required
-            minLength={3}
-            maxLength={32}
-          />
+        <TextInput
+          label="Usuario"
+          placeholder="nuevo_admin"
+          value={formUsername}
+          onChange={(e) => {
+            const val = e.target.value;
+            setFormUsername(val);
+            setFormUsernameError(val.length > 0 ? validateUsername(val) : null);
+          }}
+          error={formUsernameError}
+          mb="sm"
+          required
+          minLength={3}
+          maxLength={32}
+        />
           <PasswordInput
             label="Contraseña"
             placeholder="••••••••"
             value={formPassword}
-            onChange={(e) => {
-              const val = e.target.value;
-              setFormPassword(val);
-              if (formConfirmPassword.length > 0 && val !== formConfirmPassword) {
-                setFormConfirmPasswordError('Las contraseñas no coinciden.');
-              } else {
-                setFormConfirmPasswordError(null);
-              }
-            }}
-            mb="sm"
-            required
-            minLength={8}
-          />
-          <PasswordInput
-            label="Confirmar contraseña"
-            placeholder="••••••••"
-            value={formConfirmPassword}
-            onChange={(e) => {
-              const val = e.target.value;
-              setFormConfirmPassword(val);
-              if (val.length > 0 && val !== formPassword) {
-                setFormConfirmPasswordError('Las contraseñas no coinciden.');
-              } else {
-                setFormConfirmPasswordError(null);
-              }
-            }}
-            error={formConfirmPasswordError}
+            onChange={(e) => setFormPassword(e.target.value)}
             mb="lg"
             required
             minLength={8}
