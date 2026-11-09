@@ -38,6 +38,11 @@ export interface UpdateAdminPayload {
   password?: string;
 }
 
+export interface DeleteSelfPayload {
+  password: string;
+  confirmationPhrase: string;
+}
+
 export interface Reset2faPayload {
   password: string;
 }

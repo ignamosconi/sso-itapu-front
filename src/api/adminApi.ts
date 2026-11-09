@@ -5,6 +5,7 @@ import {
   OAuthClientCreatedResponse,
   CreateAdminPayload,
   UpdateAdminPayload,
+  DeleteSelfPayload,
   CreateOAuthClientPayload,
   UpdateOAuthClientPayload,
   SendCredentialsEmailPayload,
@@ -31,8 +32,8 @@ export const adminsApi = {
     return data;
   },
 
-  remove: async (id: string): Promise<void> => {
-    await apiClient.delete(`/admin/admins/${id}`);
+  removeSelf: async (payload: DeleteSelfPayload): Promise<void> => {
+    await apiClient.delete('/admin/admins/me', { data: payload });
   },
 };
 

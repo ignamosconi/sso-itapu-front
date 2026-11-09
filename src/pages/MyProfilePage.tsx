@@ -1,17 +1,19 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Title, Text, TextInput, PasswordInput,
   Button, Alert, Tabs, Paper,
 } from '@mantine/core';
-import { IconAlertCircle, IconCheck, IconShieldOff, IconUser } from '@tabler/icons-react';
+import { IconAlertCircle, IconCheck, IconShieldOff, IconTrash, IconUser } from '@tabler/icons-react';
 import { adminsApi } from '@/api/adminApi';
 import { useAuthStore } from '@/store/authStore';
 import { useAuth } from '@/hooks/useAuth';
-import { UpdateAdminPayload } from '@/types/api.types';
+import { UpdateAdminPayload, DeleteSelfPayload } from '@/types/api.types';
 
 export function MyProfilePage() {
   const { adminUsername, setTokens, accessToken, refreshToken } = useAuthStore();
-  const { reset2fa } = useAuth();
+  const { reset2fa, logout } = useAuth();
+  const navigate = useNavigate();
 
   const [username, setUsername] = useState(adminUsername ?? '');
   const [password, setPassword] = useState('');
@@ -23,6 +25,10 @@ export function MyProfilePage() {
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [deletePhrase, setDeletePhrase] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +52,29 @@ export function MyProfilePage() {
       setProfileError(axiosError?.response?.data?.message ?? 'Error al guardar.');
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const handleDeleteSelf = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDeleteError(null);
+    setDeleteLoading(true);
+    try {
+      const payload: DeleteSelfPayload = {
+        password: deletePassword,
+        confirmationPhrase: deletePhrase,
+      };
+      await adminsApi.removeSelf(payload);
+      // Tokens revocados en el servidor — cerramos sesión localmente.
+      // Si el logout falla (tokens ya inválidos), navegamos igual.
+      try { await logout(); } catch { /* ignorado intencionalmente */ }
+      navigate('/login');
+    } catch (err) {
+      const axiosError = err as { response?: { data?: { message?: string | string[] } } };
+      const msg = axiosError?.response?.data?.message;
+      setDeleteError(Array.isArray(msg) ? msg.join(' ') : (msg ?? 'Error al eliminar la cuenta.'));
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -75,12 +104,19 @@ export function MyProfilePage() {
 
       <Tabs defaultValue="perfil" variant="outline" radius="md">
         <Tabs.List mb="lg">
+
           <Tabs.Tab value="perfil" leftSection={<IconUser size={14} />}>
-            Datos personales
+            Mis Datos
           </Tabs.Tab>
+
           <Tabs.Tab value="2fa" leftSection={<IconShieldOff size={14} />}>
-            Autenticador 2FA
+            2FA
           </Tabs.Tab>
+
+          <Tabs.Tab value="eliminar" leftSection={<IconTrash size={14} />} color="red">
+            Eliminar cuenta
+          </Tabs.Tab>
+
         </Tabs.List>
 
         {/* ── Tab: Datos personales ── */}
@@ -163,6 +199,53 @@ export function MyProfilePage() {
                 leftSection={<IconShieldOff size={16} />}
               >
                 Resetear autenticador 2FA
+              </Button>
+            </form>
+          </Paper>
+        </Tabs.Panel>
+
+
+        {/* ── Tab: Eliminar cuenta ── */}
+        <Tabs.Panel value="eliminar">
+          <Paper withBorder radius="md" p="lg">
+            <Text size="sm" c="dimmed" mb="lg">
+              Esta acción es <strong>irreversible</strong>. Tu cuenta será eliminada permanentemente.
+              No está permitido si sos el único administrador del sistema.
+            </Text>
+
+            {deleteError && (
+              <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md" radius="md">
+                {deleteError}
+              </Alert>
+            )}
+
+            <form onSubmit={(e) => void handleDeleteSelf(e)}>
+              <TextInput
+                label="Frase de confirmación"
+                description='Escribí exactamente: borrar-mi-cuenta-no-es-reversible'
+                placeholder="borrar-mi-cuenta-no-es-reversible"
+                value={deletePhrase}
+                onChange={(e) => setDeletePhrase(e.target.value)}
+                mb="sm"
+                required
+              />
+              <PasswordInput
+                label="Contraseña actual"
+                placeholder="••••••••"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                mb="lg"
+                required
+                minLength={8}
+              />
+              <Button
+                type="submit"
+                fullWidth
+                loading={deleteLoading}
+                color="red"
+                leftSection={<IconTrash size={16} />}
+              >
+                Eliminar mi cuenta
               </Button>
             </form>
           </Paper>
