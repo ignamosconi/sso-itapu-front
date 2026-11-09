@@ -116,7 +116,7 @@ export function AdminsPage() {
         <Box>
           <Title order={2} mb={4}>Administradores</Title>
           <Text c="dimmed" size="sm">
-            Gestioná los usuarios con acceso al panel. Solo podés eliminar admins que no seas vos.
+            Gestioná los usuarios con acceso al panel.  Sólo podés borrar tu propio usuario, en el menú "Mi perfil".
           </Text>
         </Box>
         <Button
