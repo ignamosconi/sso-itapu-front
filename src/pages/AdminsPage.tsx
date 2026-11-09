@@ -24,6 +24,7 @@ export function AdminsPage() {
   const [formUsername, setFormUsername] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [formUsernameError, setFormUsernameError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
   // Modal eliminar
@@ -55,12 +56,30 @@ export function AdminsPage() {
     setFormUsername('');
     setFormPassword('');
     setFormError(null);
+    setFormUsernameError(null);
     setCreateModalOpen(true);
+  };
+
+  const USERNAME_REGEX = /^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9._-]*$/;
+
+  const validateUsername = (value: string): string | null => {
+    if (value.includes(' ')) return 'El usuario no puede contener espacios.';
+    if (!USERNAME_REGEX.test(value))
+      return 'Solo se permiten letras (con tildes), números, puntos (.), guiones bajos (_) y guiones medios (-).';
+    if (value.length > 0 && value.length < 3) return 'El usuario debe tener al menos 3 caracteres.';
+    if (value.length > 32) return 'El usuario no puede superar los 32 caracteres.';
+    return null;
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    const usernameValidationError = validateUsername(formUsername);
+    if (usernameValidationError) {
+      setFormUsernameError(usernameValidationError);
+      setFormLoading(false);
+      return;
+    }
     setFormLoading(true);
     try {
       const payload: CreateAdminPayload = { username: formUsername, password: formPassword };
@@ -197,15 +216,21 @@ export function AdminsPage() {
           <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{formError}</Alert>
         )}
         <form onSubmit={(e) => void handleCreate(e)}>
-          <TextInput
-            label="Usuario"
-            placeholder="nuevo_admin"
-            value={formUsername}
-            onChange={(e) => setFormUsername(e.target.value)}
-            mb="sm"
-            required
-            minLength={3}
-          />
+        <TextInput
+          label="Usuario"
+          placeholder="nuevo_admin"
+          value={formUsername}
+          onChange={(e) => {
+            const val = e.target.value;
+            setFormUsername(val);
+            setFormUsernameError(val.length > 0 ? validateUsername(val) : null);
+          }}
+          error={formUsernameError}
+          mb="sm"
+          required
+          minLength={3}
+          maxLength={32}
+        />
           <PasswordInput
             label="Contraseña"
             placeholder="••••••••"
