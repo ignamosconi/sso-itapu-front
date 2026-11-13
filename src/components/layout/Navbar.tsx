@@ -3,7 +3,8 @@ import {
   Stack, Text, UnstyledButton, Group, Box, Divider, Image, Loader, Tooltip,
 } from '@mantine/core';
 import {
-  IconUser, IconUsers, IconLogout, IconDashboard, IconQuestionMark, IconApps,
+  IconUser, IconUsers, IconLogout, IconDashboard, IconQuestionMark,
+  IconSchool, IconApps, IconChevronDown,
 } from '@tabler/icons-react';
 import { useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -225,11 +226,34 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
             </NavLink>
 
             {/* Links de navegación */}
-            <Stack gap={4}>
-              <NavItem to="/dashboard" label="Dashboard" icon={IconDashboard} isOpen={isOpen} />
-              <NavItem to="/admins/me" label="Mi perfil" icon={IconUser} isOpen={isOpen} />
-              <NavItem to="/admins" label="Administradores" icon={IconUsers} isOpen={isOpen} />
+            <NavItem to="/dashboard" label="Dashboard" icon={IconDashboard} isOpen={isOpen} />
+
+              <NavSubMenu
+                label="Usuarios"
+                icon={IconSchool}
+                isOpen={isOpen}
+                onToggleNavbar={onToggle}
+                items={[
+                  { to: '/padron/cargar', label: 'Cargar usuarios', icon: IconUsers },
+                  { to: '/padron', label: 'Padrón', icon: IconUsers },
+                  { to: '/padron/roles', label: 'Roles institucionales', icon: IconUsers },
+                  { to: '/padron/especialidades', label: 'Especialidades', icon: IconUsers },
+                ]}
+              />
+
               <NavItem to="/clients" label="Clientes OAuth" icon={IconApps} isOpen={isOpen} />
+
+              <NavSubMenu
+                label="Configuración"
+                icon={IconUsers}
+                isOpen={isOpen}
+                onToggleNavbar={onToggle}
+                items={[
+                  { to: '/admins/me', label: 'Mi perfil', icon: IconUser },
+                  { to: '/admins', label: 'Administradores', icon: IconUsers },
+                ]}
+              />
+
               <NavItem to="/faqs" label="FAQs" icon={IconQuestionMark} isOpen={isOpen} />
             </Stack>
           </Box>
