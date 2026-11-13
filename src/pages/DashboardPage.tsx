@@ -56,26 +56,24 @@ function StatusCard({ label, description, status, checkedAt, onRetry }: StatusCa
 export function DashboardPage() {
   const [ssoStatus, setSsoStatus] = useState<Status>('checking');
   const [ssoCheckedAt, setSsoCheckedAt] = useState<string | null>(null);
-  const [autogestionStatus, setAutogestionStatus] = useState<Status>('checking');
-  const [autogestionCheckedAt, setAutogestionCheckedAt] = useState<string | null>(null);
 
   const checkSso = async () => {
     setSsoStatus('checking');
     const ok = await healthApi.checkSso();
     setSsoStatus(ok ? 'up' : 'down');
-    setSsoCheckedAt(new Date().toLocaleTimeString('es-AR'));
+    setSsoCheckedAt(
+      new Date().toLocaleTimeString('es-AR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit', // sacá esta línea si no querés los segundos
+        hour12: false,
+      })
+    );
   };
 
-  const checkAutogestion = async () => {
-    setAutogestionStatus('checking');
-    const ok = await healthApi.checkAutogestion();
-    setAutogestionStatus(ok ? 'up' : 'down');
-    setAutogestionCheckedAt(new Date().toLocaleTimeString('es-AR'));
-  };
 
   const checkAll = () => {
     checkSso();
-    checkAutogestion();
   };
 
   useEffect(() => {
@@ -91,18 +89,11 @@ export function DashboardPage() {
 
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" maw={800}>
         <StatusCard
-          label="SSO FRVM"
+          label="Backend - SSO ITAPU"
           description="Servidor de autenticación"
           status={ssoStatus}
           checkedAt={ssoCheckedAt}
           onRetry={checkSso}
-        />
-        <StatusCard
-          label="Autogestión UTN"
-          description="webservice.frvm.utn.edu.ar"
-          status={autogestionStatus}
-          checkedAt={autogestionCheckedAt}
-          onRetry={checkAutogestion}
         />
       </SimpleGrid>
     </Box>
