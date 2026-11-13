@@ -4,9 +4,9 @@ import {
 } from '@mantine/core';
 import {
   IconUser, IconUsers, IconLogout, IconDashboard, IconQuestionMark,
-  IconSchool, IconApps, IconChevronDown,
+  IconSchool, IconApps, IconChevronDown, 
 } from '@tabler/icons-react';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import logoUtn from '@/assets/logo-utn.png';
@@ -141,6 +141,97 @@ function NavItem({ to, label, icon: Icon, isOpen }: NavItemProps) {
   );
 }
 
+// ── NavSubMenu (Desplegable) ──────────────────────────────────────────────────
+
+interface NavSubItem {
+  to: string;
+  label: string;
+  icon: React.ElementType;
+}
+
+interface NavSubMenuProps {
+  label: string;
+  icon: React.ElementType;
+  isOpen: boolean;
+  onToggleNavbar: () => void;
+  items: NavSubItem[];
+}
+
+function NavSubMenu({ label, icon: Icon, isOpen, onToggleNavbar, items }: NavSubMenuProps) {
+  const location = useLocation();
+  const isAnyChildActive = items.some(item => location.pathname === item.to);
+  const [opened, setOpened] = useState(isAnyChildActive);
+
+  useEffect(() => {
+    if (isAnyChildActive) setOpened(true);
+  }, [location.pathname, isAnyChildActive]);
+
+  const handleParentClick = () => {
+    if (!isOpen) {
+      onToggleNavbar();
+      setOpened(true);
+    } else {
+      setOpened(o => !o);
+    }
+  };
+
+  if (!isOpen) {
+    return (
+      <Tooltip label={label} position="right" withArrow>
+        <UnstyledButton
+          w={40} h={36} mx="auto"
+          onClick={handleParentClick}
+          style={(theme) => ({
+            borderRadius: theme.radius.sm,
+            background: isAnyChildActive ? 'var(--mantine-color-orange-light)' : 'transparent',
+            color: isAnyChildActive ? '#f5a705' : 'var(--mantine-color-text)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          })}
+        >
+          <Icon size={18} />
+        </UnstyledButton>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Box>
+      <UnstyledButton
+        w="100%" px="sm" py={7}
+        onClick={handleParentClick}
+        style={(theme) => ({
+          borderRadius: theme.radius.sm,
+          background: isAnyChildActive && !opened ? 'var(--mantine-color-orange-light)' : 'transparent',
+          color: isAnyChildActive ? '#f5a705' : 'var(--mantine-color-text)',
+        })}
+      >
+        <Group justify="space-between" align="center" wrap="nowrap">
+          <Group gap="sm" align="center" wrap="nowrap">
+            <Icon size={18} style={{ flexShrink: 0 }} />
+            <Text size="sm" style={{ whiteSpace: 'nowrap' }}>{label}</Text>
+          </Group>
+          <IconChevronDown
+            size={14}
+            style={{
+              transform: opened ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 200ms ease',
+              flexShrink: 0,
+            }}
+          />
+        </Group>
+      </UnstyledButton>
+      <Box style={{ display: opened ? 'block' : 'none' }}>
+        <Stack gap={2} mt={2} pl="md">
+          {items.map(item => (
+            <NavItem key={item.to} {...item} isOpen={true} />
+          ))}
+        </Stack>
+      </Box>
+    </Box>
+  );
+}
+
+
 // ── Navbar Principal ──────────────────────────────────────────────────────────
 
 interface NavbarProps {
@@ -225,8 +316,9 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
               </Group>
             </NavLink>
 
-            {/* Links de navegación */}
-            <NavItem to="/dashboard" label="Dashboard" icon={IconDashboard} isOpen={isOpen} />
+            {/* Links de navegación (Faltaba esta etiqueta de apertura) */}
+            <Stack gap={4}>
+              <NavItem to="/dashboard" label="Dashboard" icon={IconDashboard} isOpen={isOpen} />
 
               <NavSubMenu
                 label="Usuarios"
