@@ -320,6 +320,8 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
             <Stack gap={4}>
               <NavItem to="/dashboard" label="Dashboard" icon={IconDashboard} isOpen={isOpen} />
 
+              <NavItem to="/clients" label="Clientes OAuth" icon={IconApps} isOpen={isOpen} />
+
               <NavSubMenu
                 label="Usuarios"
                 icon={IconSchool}
@@ -332,8 +334,6 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
                   { to: '/padron/especialidades', label: 'Especialidades', icon: IconUsers },
                 ]}
               />
-
-              <NavItem to="/clients" label="Clientes OAuth" icon={IconApps} isOpen={isOpen} />
 
               <NavSubMenu
                 label="Configuración"
