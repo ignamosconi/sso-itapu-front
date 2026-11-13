@@ -330,7 +330,7 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
                 items={[
                   { to: '/padron/cargar', label: 'Cargar usuarios', icon: IconUsers },
                   { to: '/padron', label: 'Padrón', icon: IconUsers },
-                  { to: '/padron/roles', label: 'Roles institucionales', icon: IconUsers },
+                  { to: '/padron/roles', label: 'Roles inst.', icon: IconUsers },
                   { to: '/padron/especialidades', label: 'Especialidades', icon: IconUsers },
                 ]}
               />

@@ -53,11 +53,8 @@ export function SetPasswordPage() {
           {success ? (
             <>
               <Alert icon={<IconCheck size={16} />} color="green" mb="md" radius="md">
-                ¡Contraseña configurada correctamente! Ya podés iniciar sesión.
+                ¡Contraseña establecida! Ya podés cerrar esta página.
               </Alert>
-              <Button fullWidth variant="outline" onClick={() => navigate('/login')}>
-                Ir al panel
-              </Button>
             </>
           ) : (
             <>

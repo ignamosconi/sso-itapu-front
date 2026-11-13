@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box, Title, Text, Tabs, TextInput, Button,
-  Select, Alert, Paper, Table, Badge, Group, Anchor,
+  Select, Alert, Paper, Table, Badge, Group, Anchor, FileButton,
 } from '@mantine/core';
 import { IconAlertCircle, IconCheck, IconUpload, IconDownload } from '@tabler/icons-react';
 import { studentsApi } from '@/api/studentsApi';
@@ -9,6 +9,13 @@ import { rolesApi } from '@/api/rolesApi';
 import { specialtiesApi } from '@/api/specialtiesApi';
 import { DomainRoleResponse, SpecialtyResponse, ImportPreviewResult } from '@/types/api.types';
 import { ENV } from '@/config/env';
+
+const ALLOWED_EXTENSIONS = ['.xlsx', '.xls', '.ods'];
+const ALLOWED_MIME_TYPES = [
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'application/vnd.ms-excel', // .xls
+  'application/vnd.oasis.opendocument.spreadsheet', // .ods (LibreOffice)
+];
 
 export function CargarUsuariosPage() {
   const [roles, setRoles] = useState<DomainRoleResponse[]>([]);
@@ -33,6 +40,7 @@ export function CargarUsuariosPage() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmSuccess, setConfirmSuccess] = useState<string | null>(null);
+  const resetFileRef = useRef<() => void>(null);
 
   useEffect(() => {
     void rolesApi.findAll().then(setRoles);
@@ -60,6 +68,30 @@ export function CargarUsuariosPage() {
     } finally { setILoading(false); }
   };
 
+  const handleFileSelect = (file: File | null) => {
+    setPreview(null);
+    setConfirmSuccess(null);
+
+    if (!file) {
+      setCsvFile(null);
+      return;
+    }
+
+    const fileName = file.name.toLowerCase();
+    const hasValidExtension = ALLOWED_EXTENSIONS.some((ext) => fileName.endsWith(ext));
+    const hasValidMime = !file.type || ALLOWED_MIME_TYPES.includes(file.type);
+
+    if (!hasValidExtension || !hasValidMime) {
+      setCsvFile(null);
+      resetFileRef.current?.();
+      setPreviewError('Formato no válido. Solo se permiten archivos de Excel (.xlsx, .xls) o LibreOffice Calc (.ods).');
+      return;
+    }
+
+    setPreviewError(null);
+    setCsvFile(file);
+  };
+
   const handlePreview = async () => {
     if (!csvFile) return;
     setPreviewError(null); setPreview(null); setConfirmSuccess(null); setPreviewLoading(true);
@@ -83,7 +115,9 @@ export function CargarUsuariosPage() {
         `Importación completada: ${result.imported} usuario(s) creados.` +
         (result.usernameCollisions > 0 ? ` ${result.usernameCollisions} nombre(s) de usuario ajustado(s) por colisión.` : ''),
       );
-      setPreview(null); setCsvFile(null);
+      setPreview(null);
+      setCsvFile(null);
+      resetFileRef.current?.();
     } catch (err) {
       const ax = err as { response?: { data?: { message?: string } } };
       setPreviewError(ax?.response?.data?.message ?? 'Error al confirmar la importación.');
@@ -147,8 +181,18 @@ export function CargarUsuariosPage() {
 
             <Group mb="md" align="flex-end">
               <Box>
-                <Text size="sm" fw={500} mb={4}>Archivo CSV</Text>
-                <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={e => { setCsvFile(e.target.files?.[0] ?? null); setPreview(null); }} />
+                <Text size="sm" fw={500} mb={4}>Archivo Excel</Text>
+                <FileButton
+                  resetRef={resetFileRef}
+                  onChange={handleFileSelect}
+                  accept=".xlsx,.xls,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.oasis.opendocument.spreadsheet"
+                >
+                  {(props) => (
+                    <Button {...props} variant="default">
+                      {csvFile ? csvFile.name : 'Subir padrón'}
+                    </Button>
+                  )}
+                </FileButton>
               </Box>
               <Button onClick={() => void handlePreview()} loading={previewLoading} disabled={!csvFile} variant="outline">
                 Previsualizar
