@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Box, Title, Text, Button, Table, ActionIcon, Group,
-  Modal, TextInput, Alert, Loader, Center, Pagination, 
+  Modal, TextInput, Alert, Loader, Center, Pagination,
   Select,
 } from '@mantine/core';
 import { IconPlus, IconTrash, IconAlertCircle, IconSearch } from '@tabler/icons-react';
@@ -26,10 +26,13 @@ export function RolesPage() {
   const [pageSize, setPageSize] = useState(10);
   const PAGE_SIZE_OPTIONS = ['5', '10', '20', '50'];
 
-  const load = async () => {
-    try { setLoading(true); setRoles(await rolesApi.findAll()); }
+  const load = async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      setRoles(await rolesApi.findAll());
+    }
     catch { setError('Error al cargar los roles.'); }
-    finally { setLoading(false); }
+    finally { if (!silent) setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
 
@@ -45,7 +48,7 @@ export function RolesPage() {
     try {
       await rolesApi.create({ name: formName });
       setModalOpen(false); setFormName('');
-      void load();
+      await load(true);
     } catch (err) {
       const ax = err as { response?: { data?: { message?: string } } };
       setFormError(ax?.response?.data?.message ?? 'Error al crear el rol.');
@@ -58,7 +61,7 @@ export function RolesPage() {
     try {
       await rolesApi.remove(deleteTarget.id);
       setDeleteModal(false); setDeleteTarget(null);
-      void load();
+      await load(true);
     } catch (err) {
       const ax = err as { response?: { data?: { message?: string } } };
       setError(ax?.response?.data?.message ?? 'Error al eliminar el rol.');

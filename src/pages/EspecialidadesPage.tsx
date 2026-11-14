@@ -26,10 +26,13 @@ export function EspecialidadesPage() {
   const [pageSize, setPageSize] = useState(10);
   const PAGE_SIZE_OPTIONS = ['5', '10', '20', '50'];
 
-  const load = async () => {
-    try { setLoading(true); setEspecialidades(await specialtiesApi.findAll()); }
+  const load = async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      setEspecialidades(await specialtiesApi.findAll());
+    }
     catch { setError('Error al cargar las especialidades.'); }
-    finally { setLoading(false); }
+    finally { if (!silent) setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
 
@@ -45,7 +48,7 @@ export function EspecialidadesPage() {
     try {
       await specialtiesApi.create({ name: formName });
       setModalOpen(false); setFormName('');
-      void load();
+      await load(true);
     } catch (err) {
       const ax = err as { response?: { data?: { message?: string } } };
       setFormError(ax?.response?.data?.message ?? 'Error al crear la especialidad.');
@@ -58,7 +61,7 @@ export function EspecialidadesPage() {
     try {
       await specialtiesApi.remove(deleteTarget.id);
       setDeleteModal(false); setDeleteTarget(null);
-      void load();
+      await load(true);
     } catch (err) {
       const ax = err as { response?: { data?: { message?: string } } };
       setError(ax?.response?.data?.message ?? 'Error al eliminar la especialidad.');

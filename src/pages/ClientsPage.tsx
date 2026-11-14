@@ -204,14 +204,14 @@ export function ClientsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const load = async () => {
+  const load = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setClients(await oauthClientsApi.findAll());
     } catch {
       setError('Error al cargar los clientes OAuth.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -275,12 +275,12 @@ export function ClientsPage() {
         }
         await oauthClientsApi.update(editing.id, payload);
         setModalOpen(false);
-        void load();
+        await load(true);
       } else {
         const payload: CreateOAuthClientPayload = { clientName: formName, redirectUris: cleanUris };
         const created = await oauthClientsApi.create(payload);
         setModalOpen(false);
-        void load();
+        await load(true);
         // Mostrar el secret una sola vez
         setSecretModalData(created);
         setSecretModalMode('created');
@@ -311,7 +311,7 @@ export function ClientsPage() {
       await oauthClientsApi.remove(deleteTargetId);
       setOpenIds(prev => { const next = new Set(prev); next.delete(deleteTargetId); return next; });
       setDeleteModalOpen(false);
-      void load();
+      await load(true);
     } catch {
       setError('Error al eliminar el cliente.');
       setDeleteModalOpen(false);
@@ -334,7 +334,7 @@ export function ClientsPage() {
     try {
       const result = await oauthClientsApi.regenerateSecret(regenerateTargetId);
       setRegenerateModalOpen(false);
-      void load();
+      await load(true);
       // Mostrar el nuevo secret una sola vez
       setSecretModalData(result);
       setSecretModalMode('regenerated');
