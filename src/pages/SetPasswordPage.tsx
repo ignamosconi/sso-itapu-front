@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box, Title, Text, PasswordInput, Button, Alert, Paper, Center,
 } from '@mantine/core';
@@ -8,13 +8,13 @@ import { apiClient } from '@/api/client';
 
 export function SetPasswordPage() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const token = searchParams.get('token') ?? '';
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [suspended, setSuspended] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,6 +29,10 @@ export function SetPasswordPage() {
       const ax = err as { response?: { data?: { message?: string | string[] } } };
       const msg = ax?.response?.data?.message;
       const errorText = Array.isArray(msg) ? msg.join(' ') : (msg ?? '');
+      if (errorText.toLowerCase().includes('suspendida')) {
+        setSuspended(true);
+        return;
+      }
       setError(
         errorText.toLowerCase().includes('no encontrado')
           ? 'Tu cuenta ya no está registrada. Hablá con un administrador.'
@@ -59,6 +63,12 @@ export function SetPasswordPage() {
             <>
               <Alert icon={<IconCheck size={16} />} color="green" mb="md" radius="md">
                 ¡Contraseña establecida! Ya podés cerrar esta página.
+              </Alert>
+            </>
+          ) : suspended ? (
+            <>
+              <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md" radius="md">
+                No fue posible registrar la contraseña: la cuenta está suspendida. Contactá a un administrador.
               </Alert>
             </>
           ) : (
