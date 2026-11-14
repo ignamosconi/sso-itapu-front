@@ -132,15 +132,46 @@ export function PadronPage() {
 
       {error && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{error}</Alert>}
 
-      <Group mb="md" wrap="wrap" gap="sm">
-        <TextInput placeholder="Buscar..." leftSection={<IconSearch size={14} />} value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }} w={220} />
-        <Select placeholder="Estado" clearable value={statusFilter} onChange={v => { setStatusFilter(v); setPage(1); }} w={160}
-          data={[{ value: 'active', label: 'Activo' }, { value: 'suspended', label: 'Suspendido' }, { value: 'pending_registration', label: 'Pendiente' }]} />
-        <Select placeholder="Rol" clearable value={roleFilter} onChange={v => { setRoleFilter(v); setPage(1); }} w={160}
-          data={roles.map(r => ({ value: String(r.id), label: r.name }))} />
-        <Select placeholder="Especialidad" clearable value={specFilter} onChange={v => { setSpecFilter(v); setPage(1); }} w={160}
-          data={specs.map(s => ({ value: String(s.id), label: s.name }))} />
+      {/* Filtros */}
+      <Group mb="md" justify="space-between" wrap="wrap" gap="sm">
+        <Group wrap="wrap" gap="sm">
+          <TextInput
+            placeholder="Buscar..."
+            leftSection={<IconSearch size={14} />}
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            w={220}
+          />
+          <Select
+            placeholder="Estado"
+            clearable
+            value={statusFilter}
+            onChange={v => { setStatusFilter(v); setPage(1); }}
+            w={160}
+            data={[
+              { value: 'active', label: 'Activo' },
+              { value: 'suspended', label: 'Suspendido' },
+              { value: 'pending_registration', label: 'Pendiente' },
+            ]}
+          />
+          <Select
+            placeholder="Rol"
+            clearable
+            value={roleFilter}
+            onChange={v => { setRoleFilter(v); setPage(1); }}
+            w={160}
+            data={roles.map(r => ({ value: String(r.id), label: r.name }))}
+          />
+          <Select
+            placeholder="Especialidad"
+            clearable
+            value={specFilter}
+            onChange={v => { setSpecFilter(v); setPage(1); }}
+            w={160}
+            data={specs.map(s => ({ value: String(s.id), label: s.name }))}
+          />
+        </Group>
+
         <Select
           data={PAGE_SIZE_OPTIONS}
           value={String(pageSize)}
