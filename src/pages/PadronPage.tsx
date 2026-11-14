@@ -327,7 +327,7 @@ export function PadronPage() {
           Vas a dar de baja a <strong>{deleteTarget?.first_name} {deleteTarget?.last_name}</strong> ({deleteTarget?.username}).
           Esta acción es irreversible.
         </Text>
-        {deleteTarget?.account_status !== 'pending_registration' ? (
+        {deleteTarget?.hasPassword ? (
           <>
             <Text size="xs" c="dimmed" mb="sm">
               Esta cuenta tiene contraseña configurada. Ingresá la contraseña del usuario para confirmar la baja.
@@ -347,7 +347,7 @@ export function PadronPage() {
         ) : (
           <>
             <Text size="xs" c="dimmed" mb="sm">
-              Esta cuenta es un registro pendiente (sin contraseña). Podés eliminarla directamente.
+              Esta cuenta no tiene contraseña configurada. Podés eliminarla directamente.
             </Text>
             {deleteError && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="sm">{deleteError}</Alert>}
             <Box mb="lg" />

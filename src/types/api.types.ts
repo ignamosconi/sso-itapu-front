@@ -84,6 +84,7 @@ export interface StudentResponse {
   dni: number;
   birth_date: string;
   account_status: 'active' | 'suspended' | 'pending_registration';
+  hasPassword: boolean;
   domainRole: { id: number; name: string };
   specialty: { id: number; name: string };
   createdAt: string;
