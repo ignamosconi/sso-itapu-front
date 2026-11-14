@@ -5,7 +5,7 @@ import {
 } from '@mantine/core';
 import {
   IconShieldCheck, IconShieldX, IconRefresh,
-  IconApps, IconUsers, IconChartBar,
+  IconApps, IconUsers, IconChartBar, IconClock,
 } from '@tabler/icons-react';
 import { healthApi } from '@/api/healthApi';
 import { statsApi, DashboardStats } from '@/api/statsApi';
@@ -26,28 +26,29 @@ function StatusCard({ label, description, status, checkedAt }: StatusCardProps) 
   const isChecking = status === 'checking';
   const color = isChecking ? 'gray' : isUp ? 'green' : 'red';
 
+  const statusText = isChecking ? 'Verificando...' : isUp ? 'En línea' : 'Sin conexión';
+
   return (
-    <Card withBorder radius="md" p="lg">
-      <Group justify="space-between" mb="sm">
-        <Group>
-          <ThemeIcon variant="light" color={color} size="lg" radius="md">
-            {isUp ? <IconShieldCheck size={18} /> : <IconShieldX size={18} />}
-          </ThemeIcon>
-          <Box>
-            <Text fw={600} size="sm">{label}</Text>
-            <Text size="xs" c="dimmed">{description}</Text>
-          </Box>
+    <Tooltip
+      label={checkedAt ? `Último chequeo: ${checkedAt} · Actualiza cada 30s` : description}
+      disabled={!checkedAt && !description}
+    >
+      <Card withBorder radius="md" p="lg">
+        <Group justify="space-between" wrap="nowrap">
+          <Group wrap="nowrap">
+            <ThemeIcon variant="light" color={color} size="lg" radius="md">
+              {isUp ? <IconShieldCheck size={18} /> : <IconShieldX size={18} />}
+            </ThemeIcon>
+            <Box>
+              <Text size="xs" c="dimmed">{label}</Text>
+              <Badge color={color} variant="light" size="md" mt={4}>
+                {statusText}
+              </Badge>
+            </Box>
+          </Group>
         </Group>
-      </Group>
-      <Badge color={color} variant="light" size="lg">
-        {isChecking ? 'Verificando...' : isUp ? 'En línea' : 'Sin conexión'}
-      </Badge>
-      {checkedAt && (
-        <Text size="xs" c="dimmed" mt="sm">
-          Último chequeo: {checkedAt} · Se actualiza cada 30 segundos
-        </Text>
-      )}
-    </Card>
+      </Card>
+    </Tooltip>
   );
 }
 
@@ -199,7 +200,7 @@ export function DashboardPage() {
 
   return (
     <Box>
-      <Group justify="space-between" mb={4} align="flex-end">
+      <Group justify="space-between" mb={4} align="flex-end" maw={800}>
         <Box>
           <Title order={2} mb={4}>Dashboard</Title>
           <Text c="dimmed" mb="xl">Bienvenido al panel de administración del SSO ITAPU.</Text>
@@ -218,23 +219,23 @@ export function DashboardPage() {
         </Tooltip>
       </Group>
 
-      {/* Contadores */}
+      {/* Fila superior: Usuarios y Registros pendientes */}
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mb="md" maw={800}>
-        <StatCard
-          icon={IconApps}
-          label="Apps integradas (activas)"
-          value={stats?.oauthClientCount ?? null}
-          color="blue"
-        />
         <StatCard
           icon={IconUsers}
           label="Usuarios registrados (total)"
           value={stats?.studentCount ?? null}
           color="teal"
         />
+        <StatCard
+          icon={IconClock}
+          label="Registros pendientes"
+          value={stats?.pendingRegistrationCount ?? null}
+          color="orange"
+        />
       </SimpleGrid>
 
-      {/* Gráfico */}
+      {/* Fila media: Gráfico */}
       <Box maw={800} mb="md">
         {stats
           ? <SpecialtyChart data={stats.studentsBySpecialty} />
@@ -246,8 +247,14 @@ export function DashboardPage() {
         }
       </Box>
 
-      {/* Health */}
+      {/* Fila inferior: Apps integradas (izquierda) y Health check SSO (derecha) */}
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" maw={800}>
+        <StatCard
+          icon={IconApps}
+          label="Apps integradas (activas)"
+          value={stats?.oauthClientCount ?? null}
+          color="blue"
+        />
         <StatusCard
           label="Backend — SSO ITAPU"
           description="Servidor de autenticación"

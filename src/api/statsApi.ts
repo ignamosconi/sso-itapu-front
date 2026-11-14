@@ -8,6 +8,7 @@ export interface SpecialtyCount {
 export interface DashboardStats {
   oauthClientCount: number;
   studentCount: number;
+  pendingRegistrationCount: number;
   studentsBySpecialty: SpecialtyCount[];
 }
 
