@@ -43,7 +43,6 @@ export function PadronPage() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [resendingId, setResendingId] = useState<string | null>(null);
   const [resendModal, setResendModal] = useState(false);
   const [resendTarget, setResendTarget] = useState<StudentResponse | null>(null);
   const [resendConfirmLoading, setResendConfirmLoading] = useState(false);
@@ -264,7 +263,7 @@ export function PadronPage() {
                               <ActionIcon
                                 variant="subtle"
                                 color="blue"
-                                loading={resendingId === s.id}
+                                loading={false}
                                 onClick={() => { setResendTarget(s); setResendModal(true); }}
                               >
                                 <IconMail size={15} />
