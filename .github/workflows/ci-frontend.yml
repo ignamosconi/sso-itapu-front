@@ -2,9 +2,9 @@ name: CI — Frontend
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, dev]
   pull_request:
-    branches: [main, develop]
+    branches: [master, dev]
 
 jobs:
   test:
@@ -31,7 +31,6 @@ jobs:
         run: npm run build
         env:
           VITE_API_BASE_URL: http://localhost:3000
-          VITE_AUTOGESTION_URL: https://webservice.frvm.utn.edu.ar/autogestion
 
       - name: Tests
         run: npm run test
