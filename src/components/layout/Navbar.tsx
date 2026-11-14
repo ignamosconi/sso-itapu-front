@@ -4,7 +4,7 @@ import {
 } from '@mantine/core';
 import {
   IconUser, IconUsers, IconLogout, IconDashboard, IconQuestionMark,
-  IconSchool, IconApps, IconChevronDown, 
+  IconSchool, IconApps, IconChevronDown,
 } from '@tabler/icons-react';
 import { useRef, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -90,16 +90,17 @@ interface NavItemProps {
   label: string;
   icon: React.ElementType;
   isOpen: boolean;
+  onSelect?: () => void;
 }
 
-function NavItem({ to, label, icon: Icon, isOpen }: NavItemProps) {
+function NavItem({ to, label, icon: Icon, isOpen, onSelect }: NavItemProps) {
   const location = useLocation();
   const isActive = location.pathname === to;
 
   if (!isOpen) {
     return (
       <Tooltip label={label} position="right" withArrow>
-        <NavLink to={to} style={{ textDecoration: 'none', display: 'block' }}>
+        <NavLink to={to} onClick={onSelect} style={{ textDecoration: 'none', display: 'block' }}>
           <UnstyledButton
             w={40}
             h={36}
@@ -121,7 +122,7 @@ function NavItem({ to, label, icon: Icon, isOpen }: NavItemProps) {
   }
 
   return (
-    <NavLink to={to} style={{ textDecoration: 'none', display: 'block' }}>
+    <NavLink to={to} onClick={onSelect} style={{ textDecoration: 'none', display: 'block' }}>
       <UnstyledButton
         w="100%"
         px="sm"
@@ -154,10 +155,11 @@ interface NavSubMenuProps {
   icon: React.ElementType;
   isOpen: boolean;
   onToggleNavbar: () => void;
+  onSelect?: () => void;
   items: NavSubItem[];
 }
 
-function NavSubMenu({ label, icon: Icon, isOpen, onToggleNavbar, items }: NavSubMenuProps) {
+function NavSubMenu({ label, icon: Icon, isOpen, onToggleNavbar, onSelect, items }: NavSubMenuProps) {
   const location = useLocation();
   const isAnyChildActive = items.some(item => location.pathname === item.to);
   const [opened, setOpened] = useState(isAnyChildActive);
@@ -223,7 +225,7 @@ function NavSubMenu({ label, icon: Icon, isOpen, onToggleNavbar, items }: NavSub
       <Box style={{ display: opened ? 'block' : 'none' }}>
         <Stack gap={2} mt={2} pl="md">
           {items.map(item => (
-            <NavItem key={item.to} {...item} isOpen={true} />
+            <NavItem key={item.to} {...item} isOpen={true} onSelect={onSelect} />
           ))}
         </Stack>
       </Box>
@@ -246,12 +248,17 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
   const navigate = useNavigate();
   const [logoutLoading, setLogoutLoading] = useState(false);
 
+  const handleSelect = () => {
+    if (isMobile) onClose();
+  };
+
   const handleLogout = async () => {
     setLogoutLoading(true);
     try {
       await logout();
     } finally {
       setLogoutLoading(false);
+      if (isMobile) onClose();
       navigate('/login');
     }
   };
@@ -300,7 +307,7 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
             }}
           >
             {/* Logo y título */}
-            <NavLink to="/dashboard" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <NavLink to="/dashboard" onClick={handleSelect} style={{ textDecoration: 'none', color: 'inherit' }}>
               <Group mb="xl" gap="xs" justify={isOpen ? 'flex-start' : 'center'} wrap="nowrap" style={{ cursor: 'pointer' }}>
                 <Image src={logoUtn} w={32} h={32} fit="contain" style={{ flexShrink: 0 }} />
                 {isOpen && (
@@ -316,17 +323,18 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
               </Group>
             </NavLink>
 
-            {/* Links de navegación (Faltaba esta etiqueta de apertura) */}
+            {/* Links de navegación */}
             <Stack gap={4}>
-              <NavItem to="/dashboard" label="Dashboard" icon={IconDashboard} isOpen={isOpen} />
+              <NavItem to="/dashboard" label="Dashboard" icon={IconDashboard} isOpen={isOpen} onSelect={handleSelect} />
 
-              <NavItem to="/clients" label="Clientes OAuth" icon={IconApps} isOpen={isOpen} />
+              <NavItem to="/clients" label="Clientes OAuth" icon={IconApps} isOpen={isOpen} onSelect={handleSelect} />
 
               <NavSubMenu
                 label="Usuarios"
                 icon={IconSchool}
                 isOpen={isOpen}
                 onToggleNavbar={onToggle}
+                onSelect={handleSelect}
                 items={[
                   { to: '/padron/cargar', label: 'Cargar usuarios', icon: IconUsers },
                   { to: '/padron', label: 'Padrón', icon: IconUsers },
@@ -340,13 +348,14 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
                 icon={IconUsers}
                 isOpen={isOpen}
                 onToggleNavbar={onToggle}
+                onSelect={handleSelect}
                 items={[
                   { to: '/admins/me', label: 'Mi perfil', icon: IconUser },
                   { to: '/admins', label: 'Administradores', icon: IconUsers },
                 ]}
               />
 
-              <NavItem to="/faqs" label="FAQs" icon={IconQuestionMark} isOpen={isOpen} />
+              <NavItem to="/faqs" label="FAQs" icon={IconQuestionMark} isOpen={isOpen} onSelect={handleSelect} />
             </Stack>
           </Box>
 
