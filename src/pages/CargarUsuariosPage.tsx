@@ -183,8 +183,9 @@ export function CargarUsuariosPage() {
               </Button>
             </Group>
             <Text size="sm" c="dimmed" mb="md">
-              El archivo debe incluir las columnas: <code>first_name, last_name, dni, email, birth_date, domain_role, specialty</code>.
-              La fecha debe estar en formato <code>YYYY-MM-DD</code>. Los roles y especialidades deben coincidir exactamente con los cargados en el sistema.
+              El archivo debe tener las columnas: <code>Nombre/s, Apellido/s, DNI, Email, Fecha de nacimiento, Cargo, Especialidad</code>.
+              Las fechas se cargan como fechas normales de Excel (DD/MM/AAAA). Los valores de <strong>Cargo</strong> y <strong>Especialidad</strong>
+              deben coincidir exactamente con los cargados en el sistema — el Excel de ejemplo los lista en la parte inferior de la planilla.
             </Text>
 
             {previewError && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{previewError}</Alert>}

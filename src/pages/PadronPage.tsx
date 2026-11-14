@@ -42,6 +42,7 @@ export function PadronPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [deleteModalKey, setDeleteModalKey] = useState(0);
 
   const load = async () => {
     setLoading(true);
@@ -89,7 +90,8 @@ export function PadronPage() {
   };
 
   const openDelete = (s: StudentResponse) => {
-    setDeleteTarget(s); setDeletePassword(''); setDeleteError(null); setDeleteModal(true);
+    setDeleteTarget(s); setDeletePassword(''); setDeleteError(null);
+    setDeleteModalKey(k => k + 1); setDeleteModal(true);
   };
 
   const handleDelete = async () => {
@@ -200,7 +202,7 @@ export function PadronPage() {
         </>
       )}
 
-      <Modal opened={deleteModal} onClose={() => setDeleteModal(false)} title="Dar de baja usuario" centered>
+      <Modal key={deleteModalKey} opened={deleteModal} onClose={() => setDeleteModal(false)} title="Dar de baja usuario" centered>
         <Text size="sm" mb="sm">
           Vas a dar de baja a <strong>{deleteTarget?.first_name} {deleteTarget?.last_name}</strong> ({deleteTarget?.username}).
           Esta acción es irreversible.
@@ -217,7 +219,9 @@ export function PadronPage() {
               placeholder="••••••••"
               value={deletePassword}
               onChange={e => setDeletePassword(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') void handleDelete(); }}
               mb="lg"
+              autoFocus
             />
           </>
         ) : (
