@@ -32,7 +32,9 @@ apiClient.interceptors.response.use(
       originalRequest?.url?.includes('/admin/auth/2fa/confirm') ||
       originalRequest?.url?.includes('/admin/auth/2fa/validate') ||
       originalRequest?.url?.includes('/admin/auth/refresh') ||
-      originalRequest?.url?.includes('/admin/auth/logout');
+      originalRequest?.url?.includes('/admin/auth/logout') ||
+      originalRequest?.url?.includes('/set-password') ||
+      originalRequest?.url?.includes('/validate-reset-token');
 
     if (
       error.response?.status === 401 &&

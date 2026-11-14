@@ -10,15 +10,4 @@ export const healthApi = {
       return false;
     }
   },
-
-  // Autogestión no permite llamadas CORS desde el browser.
-  // Delegamos el chequeo al backend del SSO que sí puede consultarlo.
-  checkAutogestion: async (): Promise<boolean> => {
-    try {
-      await axios.get(`${ENV.API_BASE_URL}/health/autogestion`, { timeout: 8000 });
-      return true;
-    } catch {
-      return false;
-    }
-  },
 };

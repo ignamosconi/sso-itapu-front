@@ -47,6 +47,118 @@ export interface Reset2faPayload {
   password: string;
 }
 
+// ── Domain Roles ─────────────────────────────────────────────────────────────
+
+export interface DomainRoleResponse {
+  id: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateDomainRolePayload {
+  name: string;
+}
+
+// ── Specialties ───────────────────────────────────────────────────────────────
+
+export interface SpecialtyResponse {
+  id: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSpecialtyPayload {
+  name: string;
+}
+
+// ── Students ──────────────────────────────────────────────────────────────────
+
+export interface StudentResponse {
+  id: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  dni: number;
+  birth_date: string;
+  account_status: 'active' | 'suspended' | 'pending_registration';
+  hasPassword: boolean;
+  domainRole: { id: number; name: string };
+  specialty: { id: number; name: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginatedStudentsResponse {
+  data: StudentResponse[];
+  total: number;
+}
+
+export interface StudentFilters {
+  search?: string;
+  domainRoleId?: number;
+  specialtyId?: number;
+  accountStatus?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateStudentPayload {
+  first_name: string;
+  last_name: string;
+  email: string;
+  dni: number;
+  birth_date: string;
+  domain_role_id: number;
+  specialty_id: number;
+}
+
+export interface UpdateStudentPayload {
+  first_name?: string;
+  last_name?: string;
+  dni?: number;
+  birth_date?: string;
+  domain_role_id?: number;
+  specialty_id?: number;
+}
+
+export interface DeleteStudentPayload {
+  password?: string;
+}
+
+export interface ImportPreviewRow {
+  rowNumber: number;
+  valid: boolean;
+  errors?: string[];
+  data: Record<string, unknown>;
+}
+
+export interface ImportPreviewResult {
+  total: number;
+  valid: number;
+  invalid: number;
+  rows: ImportPreviewRow[];
+}
+
+export interface ImportConfirmPayload {
+  rows: Array<{
+    first_name: string;
+    last_name: string;
+    dni: number;
+    email: string;
+    birth_date: string;
+    domainRoleId: number;
+    specialtyId: number;
+  }>;
+}
+
+export interface ImportConfirmResult {
+  imported: number;
+  usernameCollisions: number;
+}
+
 // ── OAuth Clients ────────────────────────────────────────────────────────────
 
 // Respuesta general — sin clientSecret (el hash no sirve para nada en el front)

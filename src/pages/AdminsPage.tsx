@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  Box, Title, Text, Button, Table, Group, 
-  TextInput, PasswordInput, Alert, Loader, 
+  Box, Title, Text, Button, Table, Group,
+  TextInput, PasswordInput, Alert, Loader,
   Center, Select, Pagination, Modal
 } from '@mantine/core';
 import {
@@ -32,14 +32,14 @@ export function AdminsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const load = async () => {
+  const load = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setAdmins(await adminsApi.findAll());
     } catch {
       setError('Error al cargar los administradores.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -80,7 +80,7 @@ export function AdminsPage() {
       const payload: CreateAdminPayload = { username: formUsername, password: formPassword };
       await adminsApi.create(payload);
       setCreateModalOpen(false);
-      void load();
+      await load(true);
     } catch (err) {
       const axiosError = err as { response?: { data?: { message?: string } } };
       setFormError(axiosError?.response?.data?.message ?? 'Error al crear el administrador.');
@@ -134,7 +134,6 @@ export function AdminsPage() {
           value={String(pageSize)}
           onChange={(v) => { setPageSize(Number(v)); setPage(1); }}
           w={100}
-          label="Por página"
         />
       </Group>
 
@@ -175,21 +174,21 @@ export function AdminsPage() {
           <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{formError}</Alert>
         )}
         <form onSubmit={(e) => void handleCreate(e)}>
-        <TextInput
-          label="Usuario"
-          placeholder="nuevo_admin"
-          value={formUsername}
-          onChange={(e) => {
-            const val = e.target.value;
-            setFormUsername(val);
-            setFormUsernameError(val.length > 0 ? validateUsername(val) : null);
-          }}
-          error={formUsernameError}
-          mb="sm"
-          required
-          minLength={3}
-          maxLength={32}
-        />
+          <TextInput
+            label="Usuario"
+            placeholder="nuevo_admin"
+            value={formUsername}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFormUsername(val);
+              setFormUsernameError(val.length > 0 ? validateUsername(val) : null);
+            }}
+            error={formUsernameError}
+            mb="sm"
+            required
+            minLength={3}
+            maxLength={32}
+          />
           <PasswordInput
             label="Contraseña"
             placeholder="••••••••"
