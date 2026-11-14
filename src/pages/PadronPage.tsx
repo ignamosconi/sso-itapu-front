@@ -24,6 +24,7 @@ export function PadronPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -53,8 +54,8 @@ export function PadronPage() {
   };
   const [deleteModalKey, setDeleteModalKey] = useState(0);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await studentsApi.findAll({
         search: search || undefined,
@@ -67,7 +68,7 @@ export function PadronPage() {
       setStudents(res.data);
       setTotal(res.total);
     } catch { setError('Error al cargar el padrón.'); }
-    finally { setLoading(false); }
+    finally { if (!silent) setLoading(false); }
   };
 
   useEffect(() => { void load(); }, [search, statusFilter, roleFilter, specFilter, page, pageSize]);
@@ -93,13 +94,29 @@ export function PadronPage() {
   };
 
   const handleSuspend = async (id: string) => {
-    try { await studentsApi.suspend(id); void load(); }
-    catch (err) { const ax = err as { response?: { data?: { message?: string } } }; setError(ax?.response?.data?.message ?? 'Error.'); }
+    setActionLoadingId(id);
+    try {
+      await studentsApi.suspend(id);
+      await load(true);
+    } catch (err) {
+      const ax = err as { response?: { data?: { message?: string } } };
+      setError(ax?.response?.data?.message ?? 'Error.');
+    } finally {
+      setActionLoadingId(null);
+    }
   };
 
   const handleActivate = async (id: string) => {
-    try { await studentsApi.activate(id); void load(); }
-    catch (err) { const ax = err as { response?: { data?: { message?: string } } }; setError(ax?.response?.data?.message ?? 'Error.'); }
+    setActionLoadingId(id);
+    try {
+      await studentsApi.activate(id);
+      await load(true);
+    } catch (err) {
+      const ax = err as { response?: { data?: { message?: string } } };
+      setError(ax?.response?.data?.message ?? 'Error.');
+    } finally {
+      setActionLoadingId(null);
+    }
   };
 
   const openDelete = (s: StudentResponse) => {
@@ -112,7 +129,8 @@ export function PadronPage() {
     setDeleteLoading(true); setDeleteError(null);
     try {
       await studentsApi.remove(deleteTarget.id, { password: deletePassword || undefined });
-      setDeleteModal(false); void load();
+      setDeleteModal(false);
+      await load(true);
     } catch (err) {
       const ax = err as { response?: { data?: { message?: string } } };
       setDeleteError(ax?.response?.data?.message ?? 'Error al eliminar.');
@@ -198,6 +216,7 @@ export function PadronPage() {
               <Table.Tbody>
                 {students.map(s => {
                   const st = STATUS_LABELS[s.account_status] ?? { label: s.account_status, color: 'gray' };
+                  const isRowLoading = actionLoadingId === s.id;
                   return (
                     <Table.Tr key={s.id}>
                       <Table.Td><Text size="sm" fw={500}>{s.username}</Text></Table.Td>
@@ -218,13 +237,23 @@ export function PadronPage() {
                         <Flex direction={{ base: 'column', sm: 'row' }} gap={4} align="center">
                           {s.account_status !== 'suspended' ? (
                             <Tooltip label="Suspender">
-                              <ActionIcon variant="subtle" color="orange" onClick={() => void handleSuspend(s.id)}>
+                              <ActionIcon
+                                variant="subtle"
+                                color="orange"
+                                loading={isRowLoading}
+                                onClick={() => void handleSuspend(s.id)}
+                              >
                                 <IconPlayerPause size={15} />
                               </ActionIcon>
                             </Tooltip>
                           ) : (
                             <Tooltip label="Reactivar">
-                              <ActionIcon variant="subtle" color="green" onClick={() => void handleActivate(s.id)}>
+                              <ActionIcon
+                                variant="subtle"
+                                color="green"
+                                loading={isRowLoading}
+                                onClick={() => void handleActivate(s.id)}
+                              >
                                 <IconPlayerPlay size={15} />
                               </ActionIcon>
                             </Tooltip>
