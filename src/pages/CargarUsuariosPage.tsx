@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Box, Title, Text, Tabs, TextInput, Button,
-  Select, Alert, Paper, Table, Badge, Group, Anchor, FileButton,
+  Select, Alert, Paper, Table, Badge, Group, FileButton,
 } from '@mantine/core';
-import { IconAlertCircle, IconCheck, IconUpload, IconDownload } from '@tabler/icons-react';
+import { IconAlertCircle, IconCheck, IconUpload, IconDownload, IconLoader } from '@tabler/icons-react';
 import { studentsApi } from '@/api/studentsApi';
 import { rolesApi } from '@/api/rolesApi';
 import { specialtiesApi } from '@/api/specialtiesApi';
 import { DomainRoleResponse, SpecialtyResponse, ImportPreviewResult } from '@/types/api.types';
-import { ENV } from '@/config/env';
 
 const ALLOWED_EXTENSIONS = ['.xlsx', '.xls', '.ods'];
 const ALLOWED_MIME_TYPES = [
@@ -40,6 +39,7 @@ export function CargarUsuariosPage() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmSuccess, setConfirmSuccess] = useState<string | null>(null);
+  const [downloadLoading, setDownloadLoading] = useState(false);
   const resetFileRef = useRef<() => void>(null);
 
   useEffect(() => {
@@ -167,9 +167,20 @@ export function CargarUsuariosPage() {
         <Tabs.Panel value="masiva">
           <Paper withBorder radius="md" p="lg">
             <Group mb="md">
-              <Anchor href={`${ENV.API_BASE_URL}/admin/students/import/example`} target="_blank" size="sm">
-                <Group gap={4}><IconDownload size={14} /> Descargar CSV de ejemplo</Group>
-              </Anchor>
+              <Button
+                variant="subtle"
+                size="sm"
+                leftSection={downloadLoading ? <IconLoader size={14} /> : <IconDownload size={14} />}
+                loading={downloadLoading}
+                onClick={async () => {
+                  setDownloadLoading(true);
+                  try { await studentsApi.downloadExampleXlsx(); }
+                  catch { setPreviewError('Error al descargar el ejemplo.'); }
+                  finally { setDownloadLoading(false); }
+                }}
+              >
+                Descargar Excel de ejemplo
+              </Button>
             </Group>
             <Text size="sm" c="dimmed" mb="md">
               El archivo debe incluir las columnas: <code>first_name, last_name, dni, email, birth_date, domain_role, specialty</code>.

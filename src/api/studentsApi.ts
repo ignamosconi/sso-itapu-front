@@ -50,5 +50,17 @@ export const studentsApi = {
     await apiClient.post(`/admin/students/${id}/resend-welcome`);
   },
 
-  downloadExampleCsvUrl: (): string => '/admin/students/import/example',
+  downloadExampleXlsx: async (): Promise<void> => {
+    const response = await apiClient.get('/admin/students/import/example', {
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data as BlobPart]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'ejemplo-carga-masiva.xlsx');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };

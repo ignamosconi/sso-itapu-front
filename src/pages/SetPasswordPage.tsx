@@ -28,7 +28,12 @@ export function SetPasswordPage() {
     } catch (err) {
       const ax = err as { response?: { data?: { message?: string | string[] } } };
       const msg = ax?.response?.data?.message;
-      setError(Array.isArray(msg) ? msg.join(' ') : (msg ?? 'El link no es válido o ya fue utilizado.'));
+      const errorText = Array.isArray(msg) ? msg.join(' ') : (msg ?? '');
+      setError(
+        errorText.toLowerCase().includes('no encontrado')
+          ? 'Tu cuenta ya no está registrada. Hablá con un administrador.'
+          : (errorText || 'El link no es válido o ya fue utilizado.')
+      );
     } finally { setLoading(false); }
   };
 
