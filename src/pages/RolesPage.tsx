@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
   Box, Title, Text, Button, Table, ActionIcon, Group,
-  Modal, TextInput, Alert, Loader, Center,
+  Modal, TextInput, Alert, Loader, Center, Pagination, 
+  Select,
 } from '@mantine/core';
-import { IconPlus, IconTrash, IconAlertCircle } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconAlertCircle, IconSearch } from '@tabler/icons-react';
 import { rolesApi } from '@/api/rolesApi';
 import { DomainRoleResponse } from '@/types/api.types';
 
@@ -20,6 +21,10 @@ export function RolesPage() {
   const [deleteModal, setDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DomainRoleResponse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const PAGE_SIZE_OPTIONS = ['5', '10', '20', '50'];
 
   const load = async () => {
     try { setLoading(true); setRoles(await rolesApi.findAll()); }
@@ -27,6 +32,12 @@ export function RolesPage() {
     finally { setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
+
+  const filtered = roles.filter(r =>
+    r.name.toLowerCase().includes(search.toLowerCase())
+  );
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +80,22 @@ export function RolesPage() {
 
       {error && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{error}</Alert>}
 
+      <Group mb="md" justify="space-between">
+        <TextInput
+          placeholder="Buscar por nombre..."
+          leftSection={<IconSearch size={14} />}
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
+          w={240}
+        />
+        <Select
+          data={PAGE_SIZE_OPTIONS}
+          value={String(pageSize)}
+          onChange={v => { setPageSize(Number(v)); setPage(1); }}
+          w={100}
+        />
+      </Group>
+
       {loading ? <Center h={200}><Loader /></Center> : (
         <Table striped highlightOnHover withTableBorder>
           <Table.Thead>
@@ -79,7 +106,7 @@ export function RolesPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {roles.map(r => (
+            {paginated.map(r => (
               <Table.Tr key={r.id}>
                 <Table.Td>{r.name}</Table.Td>
                 <Table.Td>{new Date(r.createdAt).toLocaleDateString('es-AR')}</Table.Td>
@@ -93,6 +120,10 @@ export function RolesPage() {
           </Table.Tbody>
         </Table>
       )}
+
+      <Group justify="center" mt="md">
+        <Pagination total={totalPages} value={page} onChange={setPage} />
+      </Group>
 
       <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo rol institucional" centered>
         {formError && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{formError}</Alert>}

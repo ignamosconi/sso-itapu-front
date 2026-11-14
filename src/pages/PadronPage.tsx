@@ -30,7 +30,8 @@ export function PadronPage() {
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
   const [specFilter, setSpecFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const [pageSize, setPageSize] = useState(10);
+  const PAGE_SIZE_OPTIONS = ['5', '10', '20', '50'];
 
   const [roles, setRoles] = useState<DomainRoleResponse[]>([]);
   const [specs, setSpecs] = useState<SpecialtyResponse[]>([]);
@@ -42,6 +43,14 @@ export function PadronPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendModal, setResendModal] = useState(false);
+  const [resendTarget, setResendTarget] = useState<StudentResponse | null>(null);
+  const [resendConfirmLoading, setResendConfirmLoading] = useState(false);
+
+  const maskEmail = (email: string): string => {
+    const [local, domain] = email.split('@');
+    return `${local.slice(0, 2)}${'*'.repeat(Math.max(1, local.length - 2))}@${domain}`;
+  };
   const [deleteModalKey, setDeleteModalKey] = useState(0);
 
   const load = async () => {
@@ -61,23 +70,27 @@ export function PadronPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, [search, statusFilter, roleFilter, specFilter, page]);
+  useEffect(() => { void load(); }, [search, statusFilter, roleFilter, specFilter, page, pageSize]);
   useEffect(() => {
     void rolesApi.findAll().then(setRoles);
     void specialtiesApi.findAll().then(setSpecs);
   }, []);
 
-  const handleResendWelcome = async (id: string) => {
-    setResendingId(id);
+  const handleResendWelcome = async () => {
+    if (!resendTarget) return;
+    setResendConfirmLoading(true);
     try {
-        await studentsApi.resendWelcome(id);
+      await studentsApi.resendWelcome(resendTarget.id);
+      setResendModal(false);
+      setResendTarget(null);
     } catch (err) {
-        const ax = err as { response?: { data?: { message?: string } } };
-        setError(ax?.response?.data?.message ?? 'Error al reenviar el email.');
+      const ax = err as { response?: { data?: { message?: string } } };
+      setError(ax?.response?.data?.message ?? 'Error al reenviar el email.');
+      setResendModal(false);
     } finally {
-        setResendingId(null);
+      setResendConfirmLoading(false);
     }
-    };
+  };
 
   const handleSuspend = async (id: string) => {
     try { await studentsApi.suspend(id); void load(); }
@@ -128,79 +141,120 @@ export function PadronPage() {
           data={roles.map(r => ({ value: String(r.id), label: r.name }))} />
         <Select placeholder="Especialidad" clearable value={specFilter} onChange={v => { setSpecFilter(v); setPage(1); }} w={160}
           data={specs.map(s => ({ value: String(s.id), label: s.name }))} />
+        <Select
+          data={PAGE_SIZE_OPTIONS}
+          value={String(pageSize)}
+          onChange={v => { setPageSize(Number(v)); setPage(1); }}
+          w={100}
+        />
       </Group>
 
       {loading ? <Center h={200}><Loader /></Center> : (
         <>
-          <Table striped highlightOnHover withTableBorder style={{ fontSize: 13 }}>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Usuario</Table.Th>
-                <Table.Th>Nombre</Table.Th>
-                <Table.Th>DNI</Table.Th>
-                <Table.Th>Rol</Table.Th>
-                <Table.Th>Especialidad</Table.Th>
-                <Table.Th>Estado</Table.Th>
-                <Table.Th>Acciones</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {students.map(s => {
-                const st = STATUS_LABELS[s.account_status] ?? { label: s.account_status, color: 'gray' };
-                return (
-                  <Table.Tr key={s.id}>
-                    <Table.Td><Text size="sm" fw={500}>{s.username}</Text></Table.Td>
-                    <Table.Td>{s.first_name} {s.last_name}</Table.Td>
-                    <Table.Td>{s.dni}</Table.Td>
-                    <Table.Td>{s.domainRole.name}</Table.Td>
-                    <Table.Td>{s.specialty.name}</Table.Td>
-                    <Table.Td><Badge color={st.color} size="sm">{st.label}</Badge></Table.Td>
-                    <Table.Td>
-                      <Group gap={4}>
-                        {s.account_status !== 'suspended' ? (
-                          <Tooltip label="Suspender">
-                            <ActionIcon variant="subtle" color="orange" onClick={() => void handleSuspend(s.id)}>
-                              <IconPlayerPause size={15} />
+          <Box style={{ overflowX: 'auto' }}>
+            <Table striped highlightOnHover withTableBorder style={{ fontSize: 13, minWidth: 700 }}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Usuario</Table.Th>
+                  <Table.Th>Nombre</Table.Th>
+                  <Table.Th>DNI</Table.Th>
+                  <Table.Th>Rol</Table.Th>
+                  <Table.Th>Especialidad</Table.Th>
+                  <Table.Th>Estado</Table.Th>
+                  <Table.Th>Acciones</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {students.map(s => {
+                  const st = STATUS_LABELS[s.account_status] ?? { label: s.account_status, color: 'gray' };
+                  return (
+                    <Table.Tr key={s.id}>
+                      <Table.Td><Text size="sm" fw={500}>{s.username}</Text></Table.Td>
+                      <Table.Td>{s.first_name} {s.last_name}</Table.Td>
+                      <Table.Td>{s.dni}</Table.Td>
+                      <Table.Td>{s.domainRole.name}</Table.Td>
+                      <Table.Td>{s.specialty.name}</Table.Td>
+                      <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                        <Badge color={st.color} size="sm" style={{ whiteSpace: 'nowrap' }}>{st.label}</Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap={4}>
+                          {s.account_status !== 'suspended' ? (
+                            <Tooltip label="Suspender">
+                              <ActionIcon variant="subtle" color="orange" onClick={() => void handleSuspend(s.id)}>
+                                <IconPlayerPause size={15} />
+                              </ActionIcon>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip label="Reactivar">
+                              <ActionIcon variant="subtle" color="green" onClick={() => void handleActivate(s.id)}>
+                                <IconPlayerPlay size={15} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
+
+                          {s.account_status === 'pending_registration' && (
+                          <Tooltip label="Reenviar email de bienvenida">
+                              <ActionIcon
+                              variant="subtle"
+                              color="blue"
+                              loading={resendingId === s.id}
+                              onClick={() => { setResendTarget(s); setResendModal(true); }}
+                              >
+                              <IconMail size={15} />
+                              </ActionIcon>
+                          </Tooltip>
+                          )}
+
+                          <Tooltip label="Dar de baja">
+                            <ActionIcon variant="subtle" color="red" onClick={() => openDelete(s)}>
+                              <IconTrash size={15} />
                             </ActionIcon>
                           </Tooltip>
-                        ) : (
-                          <Tooltip label="Reactivar">
-                            <ActionIcon variant="subtle" color="green" onClick={() => void handleActivate(s.id)}>
-                              <IconPlayerPlay size={15} />
-                            </ActionIcon>
-                          </Tooltip>
-                        )}
-
-                        {s.account_status === 'pending_registration' && (
-                        <Tooltip label="Reenviar email de bienvenida">
-                            <ActionIcon
-                            variant="subtle"
-                            color="blue"
-                            loading={resendingId === s.id}
-                            onClick={() => void handleResendWelcome(s.id)}
-                            >
-                            <IconMail size={15} />
-                            </ActionIcon>
-                        </Tooltip>
-                        )}
-
-                        <Tooltip label="Dar de baja">
-                          <ActionIcon variant="subtle" color="red" onClick={() => openDelete(s)}>
-                            <IconTrash size={15} />
-                          </ActionIcon>
-                        </Tooltip>
-                      </Group>
-                    </Table.Td>
-                  </Table.Tr>
-                );
-              })}
-            </Table.Tbody>
-          </Table>
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  );
+                })}
+              </Table.Tbody>
+            </Table>
+          </Box>
           <Group justify="center" mt="md">
             <Pagination total={totalPages} value={page} onChange={setPage} />
           </Group>
         </>
       )}
+
+      {/* ── Modal confirmar reenvío ── */}
+      <Modal
+        opened={resendModal}
+        onClose={() => { setResendModal(false); setResendTarget(null); }}
+        title="Reenviar email de bienvenida"
+        centered
+        size="sm"
+      >
+        <Text size="sm" mb="xs">
+          Se enviará un nuevo link de configuración de contraseña a:
+        </Text>
+        <Text size="sm" fw={600} mb="lg" c="orange">
+          {resendTarget ? maskEmail(resendTarget.email) : ''}
+        </Text>
+        <Text size="xs" c="dimmed" mb="lg">
+          El link anterior quedará invalidado automáticamente cuando se use el nuevo.
+        </Text>
+        <Group justify="flex-end" gap="sm">
+          <Button variant="subtle" onClick={() => { setResendModal(false); setResendTarget(null); }}>
+            Cancelar
+          </Button>
+          <Button
+            color="blue"
+            loading={resendConfirmLoading}
+            onClick={() => void handleResendWelcome()}
+          >
+            Reenviar
+          </Button>
+        </Group>
+      </Modal>
 
       <Modal key={deleteModalKey} opened={deleteModal} onClose={() => setDeleteModal(false)} title="Dar de baja usuario" centered>
         <Text size="sm" mb="sm">

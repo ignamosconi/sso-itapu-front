@@ -210,45 +210,46 @@ export function CargarUsuariosPage() {
                 Previsualizar
               </Button>
             </Group>
-
-            {preview && (
-              <>
-                <Text size="sm" mb="sm">
-                  <strong>{preview.total}</strong> filas — <strong style={{ color: 'green' }}>{preview.valid} válidas</strong>
-                  {preview.invalid > 0 && <> — <strong style={{ color: 'red' }}>{preview.invalid} con errores</strong></>}
-                </Text>
-                <Table striped withTableBorder mb="md" style={{ fontSize: 12 }}>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>#</Table.Th>
-                      <Table.Th>Estado</Table.Th>
-                      <Table.Th>Nombre</Table.Th>
-                      <Table.Th>DNI</Table.Th>
-                      <Table.Th>Email</Table.Th>
-                      <Table.Th>Errores</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {preview.rows.map(r => (
-                      <Table.Tr key={r.rowNumber} style={{ background: r.valid ? undefined : 'rgba(239,68,68,0.06)' }}>
-                        <Table.Td>{r.rowNumber}</Table.Td>
-                        <Table.Td><Badge color={r.valid ? 'green' : 'red'} size="xs">{r.valid ? 'OK' : 'Error'}</Badge></Table.Td>
-                        <Table.Td>{String((r.data as Record<string, unknown>).first_name ?? '')} {String((r.data as Record<string, unknown>).last_name ?? '')}</Table.Td>
-                        <Table.Td>{String((r.data as Record<string, unknown>).dni ?? '')}</Table.Td>
-                        <Table.Td>{String((r.data as Record<string, unknown>).email ?? '')}</Table.Td>
-                        <Table.Td style={{ color: 'red' }}>{r.errors?.join('; ')}</Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-                {preview.valid > 0 && (
-                  <Button onClick={() => void handleConfirm()} loading={confirmLoading} style={{ background: '#f5a705', color: '#1a1200' }}>
-                    Importar {preview.valid} fila(s) válida(s)
-                  </Button>
-                )}
-              </>
-            )}
           </Paper>
+
+          {preview && (
+            <>
+              <Text size="sm" mb="sm">
+                <strong>{preview.total}</strong> filas — <strong style={{ color: 'green' }}>{preview.valid} válidas</strong>
+                {preview.invalid > 0 && <> — <strong style={{ color: 'red' }}>{preview.invalid} con errores</strong></>}
+              </Text>
+              <Table striped withTableBorder mb="md" style={{ fontSize: 12 }}>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>#</Table.Th>
+                    <Table.Th>Estado</Table.Th>
+                    <Table.Th>Nombre</Table.Th>
+                    <Table.Th>DNI</Table.Th>
+                    <Table.Th>Email</Table.Th>
+                    <Table.Th>Errores</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {preview.rows.map(r => (
+                    <Table.Tr key={r.rowNumber} style={{ background: r.valid ? undefined : 'rgba(239,68,68,0.06)' }}>
+                      <Table.Td>{r.rowNumber}</Table.Td>
+                      <Table.Td><Badge color={r.valid ? 'green' : 'red'} size="xs">{r.valid ? 'OK' : 'Error'}</Badge></Table.Td>
+                      <Table.Td>{String((r.data as Record<string, unknown>).first_name ?? '')} {String((r.data as Record<string, unknown>).last_name ?? '')}</Table.Td>
+                      <Table.Td>{String((r.data as Record<string, unknown>).dni ?? '')}</Table.Td>
+                      <Table.Td>{String((r.data as Record<string, unknown>).email ?? '')}</Table.Td>
+                      <Table.Td style={{ color: 'red' }}>{r.errors?.join('; ')}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+              {preview.valid > 0 && (
+                <Button onClick={() => void handleConfirm()} loading={confirmLoading} style={{ background: '#f5a705', color: '#1a1200' }}>
+                  Importar {preview.valid} fila(s) válida(s)
+                </Button>
+              )}
+            </>
+          )}
+          
         </Tabs.Panel>
       </Tabs>
     </Box>

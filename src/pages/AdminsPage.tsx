@@ -134,7 +134,6 @@ export function AdminsPage() {
           value={String(pageSize)}
           onChange={(v) => { setPageSize(Number(v)); setPage(1); }}
           w={100}
-          label="Por página"
         />
       </Group>
 

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
   Box, Title, Text, Button, Table, ActionIcon, Group,
-  Modal, TextInput, Alert, Loader, Center,
+  Modal, TextInput, Alert, Loader, Center, Pagination,
+  Select,
 } from '@mantine/core';
-import { IconPlus, IconTrash, IconAlertCircle } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconAlertCircle, IconSearch } from '@tabler/icons-react';
 import { specialtiesApi } from '@/api/specialtiesApi';
 import { SpecialtyResponse } from '@/types/api.types';
 
@@ -20,6 +21,10 @@ export function EspecialidadesPage() {
   const [deleteModal, setDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SpecialtyResponse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const PAGE_SIZE_OPTIONS = ['5', '10', '20', '50'];
 
   const load = async () => {
     try { setLoading(true); setEspecialidades(await specialtiesApi.findAll()); }
@@ -27,6 +32,12 @@ export function EspecialidadesPage() {
     finally { setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
+
+  const filtered = especialidades.filter(s =>
+    s.name.toLowerCase().includes(search.toLowerCase())
+  );
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +80,22 @@ export function EspecialidadesPage() {
 
       {error && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{error}</Alert>}
 
+      <Group mb="md" justify="space-between">
+        <TextInput
+          placeholder="Buscar por nombre..."
+          leftSection={<IconSearch size={14} />}
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
+          w={240}
+        />
+        <Select
+          data={PAGE_SIZE_OPTIONS}
+          value={String(pageSize)}
+          onChange={v => { setPageSize(Number(v)); setPage(1); }}
+          w={100}
+        />
+      </Group>
+
       {loading ? <Center h={200}><Loader /></Center> : (
         <Table striped highlightOnHover withTableBorder>
           <Table.Thead>
@@ -79,7 +106,7 @@ export function EspecialidadesPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {especialidades.map(e => (
+            {paginated.map(e => (
               <Table.Tr key={e.id}>
                 <Table.Td>{e.name}</Table.Td>
                 <Table.Td>{new Date(e.createdAt).toLocaleDateString('es-AR')}</Table.Td>
@@ -93,6 +120,10 @@ export function EspecialidadesPage() {
           </Table.Tbody>
         </Table>
       )}
+
+      <Group justify="center" mt="md">
+        <Pagination total={totalPages} value={page} onChange={setPage} />
+      </Group>
 
       <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title="Nueva especialidad" centered>
         {formError && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{formError}</Alert>}
