@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Box, Title, Text, Table, Group, Badge, TextInput, Select,
   ActionIcon, Loader, Center, Alert, Pagination, Modal,
-  Button, PasswordInput, Tooltip,
+  Button, PasswordInput, Tooltip, Flex,
 } from '@mantine/core';
 import {
   IconSearch, IconAlertCircle, IconPlayerPause,
@@ -191,7 +191,7 @@ export function PadronPage() {
                   <Table.Th>DNI</Table.Th>
                   <Table.Th>Rol</Table.Th>
                   <Table.Th>Especialidad</Table.Th>
-                  <Table.Th>Estado</Table.Th>
+                  <Table.Th miw={115}>Estado</Table.Th>
                   <Table.Th>Acciones</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -205,11 +205,17 @@ export function PadronPage() {
                       <Table.Td>{s.dni}</Table.Td>
                       <Table.Td>{s.domainRole.name}</Table.Td>
                       <Table.Td>{s.specialty.name}</Table.Td>
-                      <Table.Td style={{ whiteSpace: 'nowrap' }}>
-                        <Badge color={st.color} size="sm" style={{ whiteSpace: 'nowrap' }}>{st.label}</Badge>
+                      <Table.Td miw={115} style={{ whiteSpace: 'nowrap' }}>
+                        <Badge
+                          color={st.color}
+                          size="sm"
+                          style={{ whiteSpace: 'nowrap', width: 'max-content', flexShrink: 0 }}
+                        >
+                          {st.label}
+                        </Badge>
                       </Table.Td>
                       <Table.Td>
-                        <Group gap={4}>
+                        <Flex direction={{ base: 'column', sm: 'row' }} gap={4} align="center">
                           {s.account_status !== 'suspended' ? (
                             <Tooltip label="Suspender">
                               <ActionIcon variant="subtle" color="orange" onClick={() => void handleSuspend(s.id)}>
@@ -225,16 +231,16 @@ export function PadronPage() {
                           )}
 
                           {s.account_status === 'pending_registration' && (
-                          <Tooltip label="Reenviar email de bienvenida">
+                            <Tooltip label="Reenviar email de bienvenida">
                               <ActionIcon
-                              variant="subtle"
-                              color="blue"
-                              loading={resendingId === s.id}
-                              onClick={() => { setResendTarget(s); setResendModal(true); }}
+                                variant="subtle"
+                                color="blue"
+                                loading={resendingId === s.id}
+                                onClick={() => { setResendTarget(s); setResendModal(true); }}
                               >
-                              <IconMail size={15} />
+                                <IconMail size={15} />
                               </ActionIcon>
-                          </Tooltip>
+                            </Tooltip>
                           )}
 
                           <Tooltip label="Dar de baja">
@@ -242,7 +248,7 @@ export function PadronPage() {
                               <IconTrash size={15} />
                             </ActionIcon>
                           </Tooltip>
-                        </Group>
+                        </Flex>
                       </Table.Td>
                     </Table.Tr>
                   );
