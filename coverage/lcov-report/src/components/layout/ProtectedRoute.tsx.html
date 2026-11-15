@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>6/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>6/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -107,14 +107,14 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -124,9 +124,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Navigate } from 'react-router-dom';
 import { Center, Loader, Text, Stack } from '@mantine/core';
 import { useAuthStore } from '@/store/authStore';
@@ -135,18 +135,18 @@ interface Props {
   children: React.ReactNode;
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >ProtectedRoute({</span> children }: Props) {
+export function ProtectedRoute({ children }: Props) {
   // Verificar tanto isAuthenticated como la presencia del accessToken en memoria.
   // isAuthenticated puede ser manipulado en sessionStorage, pero accessToken
   // no se persiste — solo existe en memoria si el bootstrap lo obtuvo del servidor.
-  const { isAuthenticated, isBootstrapping, accessToken } = <span class="cstat-no" title="statement not covered" >useAuthStore()</span>;
+  const { isAuthenticated, isBootstrapping, accessToken } = useAuthStore();
 &nbsp;
   // Mientras el bootstrap intenta recuperar la sesión desde sessionStorage,
   // mostramos un loader en lugar de redirigir al login prematuramente.
   // Esto evita el flash de UI autenticada y el redirect falso cuando
   // hay un refresh token válido pero el access token todavía no se recuperó.
-<span class="cstat-no" title="statement not covered" >  if (isBootstrapping) {</span>
-<span class="cstat-no" title="statement not covered" >    return (</span>
+  if (isBootstrapping) {
+    return (
       &lt;Center h="100vh"&gt;
         &lt;Stack align="center" gap="sm"&gt;
           &lt;Loader color="orange" /&gt;
@@ -156,9 +156,9 @@ export function <span class="fstat-no" title="function not covered" >ProtectedRo
     );
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  if (!isAuthenticated || !accessToken) <span class="cstat-no" title="statement not covered" >return &lt;Navigate to="/login" replace /&gt;;</span></span>
+  if (!isAuthenticated || !accessToken) return &lt;Navigate to="/login" replace /&gt;;
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return &lt;&gt;{children}&lt;/&gt;;</span>
+  return &lt;&gt;{children}&lt;/&gt;;
 }</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -166,7 +166,7 @@ export function <span class="fstat-no" title="function not covered" >ProtectedRo
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-15T15:15:25.133Z
+                at 2026-11-15T15:35:30.225Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

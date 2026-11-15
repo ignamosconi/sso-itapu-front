@@ -17,6 +17,7 @@ export function MyProfilePage() {
 
   const [username, setUsername] = useState(adminUsername ?? '');
   const [password, setPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -38,7 +39,14 @@ export function MyProfilePage() {
     try {
       const payload: UpdateAdminPayload = {};
       if (username !== adminUsername) payload.username = username;
-      if (password) payload.password = password;
+      if (password) {
+        if (!currentPassword) {
+          setProfileError('Debés ingresar tu contraseña actual para cambiarla.');
+          return;
+        }
+        payload.password = password;
+        payload.currentPassword = currentPassword;
+      }
       if (Object.keys(payload).length === 0) {
         setProfileError('No hay cambios para guardar.');
         return;
@@ -46,6 +54,7 @@ export function MyProfilePage() {
       await adminsApi.updateSelf(payload);
       setProfileSuccess(true);
       setPassword('');
+      setCurrentPassword('');
       if (accessToken && refreshToken) setTokens(accessToken, refreshToken);
     } catch (err) {
       const axiosError = err as { response?: { data?: { message?: string } } };
@@ -140,6 +149,15 @@ export function MyProfilePage() {
                 mb="sm"
                 required
                 minLength={3}
+              />
+              <PasswordInput
+                label="Contraseña actual"
+                description="Requerida para confirmar el cambio de contraseña."
+                placeholder="••••••••"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                mb="sm"
+                minLength={8}
               />
               <PasswordInput
                 label="Nueva contraseña"

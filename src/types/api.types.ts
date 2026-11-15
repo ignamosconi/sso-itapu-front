@@ -36,6 +36,7 @@ export interface CreateAdminPayload {
 export interface UpdateAdminPayload {
   username?: string;
   password?: string;
+  currentPassword?: string;
 }
 
 export interface DeleteSelfPayload {

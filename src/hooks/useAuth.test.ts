@@ -144,4 +144,27 @@ describe('useAuth', () => {
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
     });
   });
+
+  describe('setup2fa', () => {
+    it('debería retornar el QR y el confirm_pending_token del backend', async () => {
+      const setupResponse = {
+        qrCodeDataUrl: 'data:image/png;base64,fakeqr',
+        manualEntrySecret: 'JBSWY3DPEHPK3PXP',
+        confirm_pending_token: 'confirm-pending-jwt',
+      };
+      vi.mocked(authApi.setup2fa).mockResolvedValue(setupResponse);
+
+      const { result } = renderHook(() => useAuth());
+
+      let response;
+      await act(async () => {
+        response = await result.current.setup2fa('pending-jwt');
+      });
+
+      expect(authApi.setup2fa).toHaveBeenCalledWith('pending-jwt');
+      expect(response).toEqual(setupResponse);
+      // setup2fa no modifica el store — el pending_token viene de loginStep1
+      expect(useAuthStore.getState().pendingToken).toBeNull();
+    });
+  });
 });

@@ -70,6 +70,7 @@ export function PadronPage() {
     finally { if (!silent) setLoading(false); }
   };
 
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, [search, statusFilter, roleFilter, specFilter, page, pageSize]);
   useEffect(() => {
     void rolesApi.findAll().then(setRoles);
