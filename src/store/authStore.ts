@@ -12,6 +12,7 @@ interface AuthState {
   isBootstrapping: boolean;          // true mientras se intenta el refresh inicial al cargar
 
   setTokens: (accessToken: string, refreshToken: string) => void;
+  setAdminUsername: (username: string) => void;
   setPendingToken: (token: string) => void;
   clearPendingToken: () => void;
   refresh: () => Promise<void>;
@@ -48,6 +49,10 @@ export const useAuthStore = create<AuthState>()(
           adminId: (payload.sub as string) ?? null,
           adminUsername: (payload.username as string) ?? null,
         });
+      },
+
+      setAdminUsername: (username) => {
+        set({ adminUsername: username });
       },
 
       setPendingToken: (token) => {
