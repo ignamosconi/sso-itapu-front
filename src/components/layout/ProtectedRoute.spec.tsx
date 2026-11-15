@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ProtectedRoute } from './ProtectedRoute';
 import { useAuthStore } from '@/store/authStore';
+import { MantineProvider } from '@mantine/core';
+
+const renderWithMantine = (ui: React.ReactElement) =>
+  render(<MantineProvider>{ui}</MantineProvider>);
 
 // Sustituimos Navigate por un marcador para poder hacer assertions
 vi.mock('react-router-dom', async () => {
@@ -31,7 +35,7 @@ describe('ProtectedRoute', () => {
   it('debería mostrar el loader mientras el bootstrap está en curso', () => {
     useAuthStore.setState({ isBootstrapping: true });
 
-    render(
+    renderWithMantine(
       <ProtectedRoute>
         <div data-testid="children">contenido protegido</div>
       </ProtectedRoute>,
@@ -45,7 +49,7 @@ describe('ProtectedRoute', () => {
   it('debería redirigir a /login si no está autenticado', () => {
     useAuthStore.setState({ isAuthenticated: false, accessToken: null });
 
-    render(
+    renderWithMantine(
       <ProtectedRoute>
         <div data-testid="children">contenido protegido</div>
       </ProtectedRoute>,
@@ -61,7 +65,7 @@ describe('ProtectedRoute', () => {
     // isAuthenticated puede quedar en sessionStorage pero accessToken no se persiste
     useAuthStore.setState({ isAuthenticated: true, accessToken: null });
 
-    render(
+    renderWithMantine(
       <ProtectedRoute>
         <div data-testid="children">contenido protegido</div>
       </ProtectedRoute>,
@@ -73,7 +77,7 @@ describe('ProtectedRoute', () => {
   it('debería renderizar los children si está autenticado y tiene accessToken', () => {
     useAuthStore.setState({ isAuthenticated: true, accessToken: 'valid-token' });
 
-    render(
+    renderWithMantine(
       <ProtectedRoute>
         <div data-testid="children">contenido protegido</div>
       </ProtectedRoute>,

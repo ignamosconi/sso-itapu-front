@@ -15,7 +15,7 @@ export function AppShell() {
     if (isMobile === undefined) return;
     if (isMobile) close();
     else open();
-  }, [isMobile]);
+  }, [isMobile, open, close]);
 
   // En mobile el layout no empuja el contenido principal, flota por encima
   const layoutWidth = isMobile ? NAVBAR_COLLAPSED : (opened ? NAVBAR_EXPANDED : NAVBAR_COLLAPSED);
