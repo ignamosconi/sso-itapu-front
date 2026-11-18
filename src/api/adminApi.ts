@@ -48,7 +48,7 @@ export const oauthClientsApi = {
     return data;
   },
 
-  // Devuelve OAuthClientCreatedResponse — incluye plainSecret una sola vez
+  // Devuelve OAuthClientCreatedResponse
   create: async (payload: CreateOAuthClientPayload): Promise<OAuthClientCreatedResponse> => {
     const { data } = await apiClient.post<OAuthClientCreatedResponse>('/admin/clients', payload);
     return data;
@@ -63,7 +63,7 @@ export const oauthClientsApi = {
     await apiClient.delete(`/admin/clients/${id}`);
   },
 
-  // Devuelve OAuthClientCreatedResponse — incluye plainSecret una sola vez
+  // Devuelve OAuthClientCreatedResponse
   regenerateSecret: async (id: number): Promise<OAuthClientCreatedResponse> => {
     const { data } = await apiClient.post<OAuthClientCreatedResponse>(
       `/admin/clients/${id}/regenerate-secret`,

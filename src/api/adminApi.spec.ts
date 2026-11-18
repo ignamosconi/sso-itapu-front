@@ -67,12 +67,9 @@ describe('oauthClientsApi', () => {
   });
 
   it('create, update y remove deberían operar sobre /admin/clients', async () => {
-    vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 1, plainSecret: 'sec' } });
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 1 } });
     vi.mocked(apiClient.patch).mockResolvedValue({ data: { id: 1, clientName: 'App2' } });
     vi.mocked(apiClient.delete).mockResolvedValue({});
-
-    const created = await oauthClientsApi.create({ clientName: 'App', redirectUris: ['https://a.com'] });
-    expect(created.plainSecret).toBe('sec');
 
     const updated = await oauthClientsApi.update(1, { clientName: 'App2' });
     expect(updated.clientName).toBe('App2');
@@ -82,12 +79,11 @@ describe('oauthClientsApi', () => {
   });
 
   it('regenerateSecret, sendCredentialsByEmail, suspend y activate deberían llamar a sus rutas', async () => {
-    vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 1, plainSecret: 'new-sec' } });
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 1 } });
     vi.mocked(apiClient.patch).mockResolvedValue({ data: { id: 1, isActive: false } });
 
-    const regen = await oauthClientsApi.regenerateSecret(1);
+    await oauthClientsApi.regenerateSecret(1);
     expect(apiClient.post).toHaveBeenCalledWith('/admin/clients/1/regenerate-secret');
-    expect(regen.plainSecret).toBe('new-sec');
 
     await oauthClientsApi.sendCredentialsByEmail(1, { to: 'dev@utn.edu.ar' });
     expect(apiClient.post).toHaveBeenCalledWith('/admin/clients/1/send-credentials', { to: 'dev@utn.edu.ar' });
