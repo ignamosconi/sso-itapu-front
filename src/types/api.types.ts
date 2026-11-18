@@ -177,7 +177,6 @@ export interface OAuthClientCreatedResponse {
   id: number;
   clientName: string;
   redirectUris: string[];
-  plainSecret: string;
   createdAt: string;
   updatedAt: string;
 }

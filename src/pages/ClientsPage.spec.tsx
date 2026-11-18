@@ -82,7 +82,6 @@ describe('ClientsPage', () => {
       id: 1,
       clientName: 'Torneito App',
       redirectUris: ['http://localhost:4000/callback'],
-      plainSecret: 'secret_once_123',
       createdAt: '2026-01-10T00:00:00Z',
       updatedAt: '2026-01-10T00:00:00Z',
     });
@@ -155,7 +154,6 @@ describe('ClientsPage', () => {
       id: 1,
       clientName: 'Torneito App',
       redirectUris: ['http://localhost:4000/callback'],
-      plainSecret: 'new_secret_456',
       createdAt: '2026-01-10T00:00:00Z',
       updatedAt: '2026-01-10T00:00:00Z',
     });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box, Title, Text, PasswordInput, Button, Alert, Paper, Center, Loader,
 } from '@mantine/core';
@@ -21,8 +21,9 @@ function formatTokenError(err: unknown): string {
 }
 
 export function SetPasswordPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') ?? '';
+  const [token] = useState(() => searchParams.get('token') ?? '');
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -40,6 +41,7 @@ export function SetPasswordPage() {
       setValidating(true);
       try {
         await apiClient.post('/sso/validate-reset-token', { token });
+        navigate({ search: '' }, { replace: true });
       } catch (err) {
         if (!ignore) setFatalError(formatTokenError(err));
       } finally {
@@ -49,7 +51,7 @@ export function SetPasswordPage() {
 
     void checkToken();
     return () => { ignore = true; };
-  }, [token]);
+  }, [token, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

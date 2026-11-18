@@ -26,15 +26,17 @@ apiClient.interceptors.response.use(
 
     const originalRequest = error.config as typeof error.config & { _retry?: boolean };
 
-    const isAuthRequest =
-      originalRequest?.url?.includes('/admin/auth/login') ||
-      originalRequest?.url?.includes('/admin/auth/2fa/setup') ||
-      originalRequest?.url?.includes('/admin/auth/2fa/confirm') ||
-      originalRequest?.url?.includes('/admin/auth/2fa/validate') ||
-      originalRequest?.url?.includes('/admin/auth/refresh') ||
-      originalRequest?.url?.includes('/admin/auth/logout') ||
-      originalRequest?.url?.includes('/set-password') ||
-      originalRequest?.url?.includes('/validate-reset-token');
+    const AUTH_PATHS = new Set([
+      '/admin/auth/login',
+      '/admin/auth/2fa/setup',
+      '/admin/auth/2fa/confirm',
+      '/admin/auth/2fa/validate',
+      '/admin/auth/refresh',
+      '/admin/auth/logout',
+      '/sso/set-password',
+      '/sso/validate-reset-token',
+    ]);
+    const isAuthRequest = AUTH_PATHS.has(originalRequest?.url ?? '');
 
     if (
       error.response?.status === 401 &&

@@ -79,7 +79,7 @@ export function CargarUsuariosPage() {
 
     const fileName = file.name.toLowerCase();
     const hasValidExtension = ALLOWED_EXTENSIONS.some((ext) => fileName.endsWith(ext));
-    const hasValidMime = !file.type || ALLOWED_MIME_TYPES.includes(file.type);
+    const hasValidMime = ALLOWED_MIME_TYPES.includes(file.type);
 
     if (!hasValidExtension || !hasValidMime) {
       setCsvFile(null);
