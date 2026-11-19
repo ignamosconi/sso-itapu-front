@@ -11,7 +11,7 @@ import {
 import { studentsApi } from '@/api/studentsApi';
 import { rolesApi } from '@/api/rolesApi';
 import { specialtiesApi } from '@/api/specialtiesApi';
-import { StudentResponse, DomainRoleResponse, SpecialtyResponse } from '@/types/api.types';
+import { StudentResponse, DomainRoleResponse, SpecialtyResponse, ResponsibleApp } from '@/types/api.types';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   active: { label: 'Activo', color: 'green' },
@@ -52,6 +52,11 @@ export function PadronPage() {
     return `${local.slice(0, 2)}${'*'.repeat(Math.max(1, local.length - 2))}@${domain}`;
   };
   const [deleteModalKey, setDeleteModalKey] = useState(0);
+
+  // Modal de conflicto: usuario es responsable de apps
+  const [conflictModal, setConflictModal] = useState(false);
+  const [conflictApps, setConflictApps] = useState<ResponsibleApp[]>([]);
+  const [conflictStudentName, setConflictStudentName] = useState('');
 
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -132,8 +137,16 @@ export function PadronPage() {
       setDeleteModal(false);
       await load(true);
     } catch (err) {
-      const ax = err as { response?: { data?: { message?: string } } };
-      setDeleteError(ax?.response?.data?.message ?? 'Error al eliminar.');
+      const ax = err as { response?: { status?: number; data?: { message?: string; responsibleApps?: ResponsibleApp[] } } };
+      if (ax?.response?.status === 409 && ax?.response?.data?.responsibleApps) {
+        // Cerrar modal de baja y abrir modal de conflicto
+        setDeleteModal(false);
+        setConflictStudentName(`${deleteTarget.first_name} ${deleteTarget.last_name}`);
+        setConflictApps(ax.response.data.responsibleApps);
+        setConflictModal(true);
+      } else {
+        setDeleteError(ax?.response?.data?.message ?? 'Error al eliminar.');
+      }
     } finally { setDeleteLoading(false); }
   };
 
@@ -357,6 +370,41 @@ export function PadronPage() {
           <Button variant="subtle" onClick={() => setDeleteModal(false)}>Cancelar</Button>
           <Button color="red" loading={deleteLoading} onClick={() => void handleDelete()}>Dar de baja</Button>
         </Group>
+      </Modal>
+          {/* ── Modal conflicto: usuario responsable de apps ── */}
+      <Modal
+        opened={conflictModal}
+        onClose={() => setConflictModal(false)}
+        title="No se puede eliminar este usuario"
+        centered
+        size="sm"
+      >
+        <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">
+          No es posible eliminar a <strong>{conflictStudentName}</strong> porque es responsable de las siguientes apps:
+        </Alert>
+        <Box
+          style={{
+            maxHeight: 200,
+            overflowY: 'auto',
+            border: '1px solid var(--mantine-color-default-border)',
+            borderRadius: 'var(--mantine-radius-sm)',
+            padding: 8,
+          }}
+          mb="md"
+        >
+          {conflictApps.map(app => (
+            <Group key={app.id} gap="xs" mb={4}>
+              <Badge variant="light" color="orange" size="sm">{app.id}</Badge>
+              <Text size="sm">{app.clientName}</Text>
+            </Group>
+          ))}
+        </Box>
+        <Text size="xs" c="dimmed" mb="md">
+          Para poder eliminar este usuario, primero debés cambiar el responsable de estas apps o eliminarlas.
+        </Text>
+        <Button fullWidth variant="default" onClick={() => setConflictModal(false)}>
+          Entendido
+        </Button>
       </Modal>
     </Box>
   );

@@ -5,7 +5,7 @@ import { PadronPage } from './PadronPage';
 import { studentsApi } from '@/api/studentsApi';
 import { rolesApi } from '@/api/rolesApi';
 import { specialtiesApi } from '@/api/specialtiesApi';
-import { StudentResponse } from '@/types/api.types';
+import { StudentResponse, ResponsibleApp } from '@/types/api.types';
 
 vi.mock('@/api/studentsApi', () => ({
   studentsApi: {
@@ -189,5 +189,51 @@ describe('PadronPage', () => {
       },
       { timeout: 3000 },
     );
+  });
+
+  it('debería mostrar modal de conflicto 409 cuando el usuario es responsable de apps', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({
+      data: [studentActiveWithPass],
+      total: 1,
+    });
+
+    const conflictError = {
+      response: {
+        status: 409,
+        data: {
+          statusCode: 409,
+          message: 'No es posible eliminar a este usuario porque es responsable de apps OAuth.',
+          responsibleApps: [
+            { id: 10, clientName: 'Torneito App' },
+            { id: 20, clientName: 'Autogestión' },
+          ] as ResponsibleApp[],
+        },
+      },
+    };
+    vi.mocked(studentsApi.remove).mockRejectedValueOnce(conflictError);
+
+    const { container } = renderPadron();
+    await screen.findByText('j.perez');
+
+    // Click en "Dar de baja"
+    const rowButtons = container.querySelectorAll('tbody tr')[0].querySelectorAll('button');
+    fireEvent.click(rowButtons[1]); // Dar de baja
+
+    // Ingresar contraseña y confirmar
+    const passInput = await screen.findByLabelText(/Contraseña del alumno/i);
+    fireEvent.change(passInput, { target: { value: 'ClaveAlumno123' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Dar de baja$/i }));
+
+    // Modal de conflicto aparece
+    expect(await screen.findByText(/No se puede eliminar este usuario/i)).toBeInTheDocument();
+    expect(screen.getByText('Torneito App')).toBeInTheDocument();
+    expect(screen.getByText('Autogestión')).toBeInTheDocument();
+
+    // Cerrar modal de conflicto
+    fireEvent.click(screen.getByRole('button', { name: /^Entendido$/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/No se puede eliminar este usuario/i)).not.toBeInTheDocument();
+    });
   });
 });

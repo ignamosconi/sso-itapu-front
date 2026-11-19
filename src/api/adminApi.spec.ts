@@ -85,8 +85,8 @@ describe('oauthClientsApi', () => {
     await oauthClientsApi.regenerateSecret(1);
     expect(apiClient.post).toHaveBeenCalledWith('/admin/clients/1/regenerate-secret');
 
-    await oauthClientsApi.sendCredentialsByEmail(1, { to: 'dev@utn.edu.ar' });
-    expect(apiClient.post).toHaveBeenCalledWith('/admin/clients/1/send-credentials', { to: 'dev@utn.edu.ar' });
+    await oauthClientsApi.sendCredentialsByEmail(1);
+    expect(apiClient.post).toHaveBeenCalledWith('/admin/clients/1/send-credentials');
 
     await oauthClientsApi.suspend(1);
     expect(apiClient.patch).toHaveBeenCalledWith('/admin/clients/1/suspend');
