@@ -65,7 +65,6 @@ vi.mock('@/api/adminApi', () => ({
     suspend: vi.fn(),
     activate: vi.fn(),
     sendCredentialsByEmail: vi.fn(),
-    changeResponsibleUser: vi.fn(),
   },
 }));
 
@@ -209,11 +208,12 @@ describe('ClientsPage', () => {
     });
   });
 
-  it('debería editar un cliente existente', async () => {
+  it('debería editar un cliente existente (nombre)', async () => {
     vi.mocked(oauthClientsApi.findAll)
       .mockResolvedValueOnce([mockClients[0]])
       .mockResolvedValueOnce([{ ...mockClients[0], clientName: 'Torneito v2' }]);
     vi.mocked(oauthClientsApi.update).mockResolvedValueOnce({ ...mockClients[0], clientName: 'Torneito v2' });
+    vi.mocked(studentsApi.findAll).mockResolvedValueOnce({ data: mockStudents, total: 1 });
 
     const { container } = renderClients();
     await screen.findByText('Torneito App');
@@ -230,6 +230,58 @@ describe('ClientsPage', () => {
     });
 
     await screen.findByText('Torneito v2');
+  });
+
+  it('debería editar un cliente cambiando el usuario responsable', async () => {
+    const clientWithResponsible: OAuthClientResponse = {
+      ...mockClients[0],
+      responsibleUser: mockResponsibleUser,
+    };
+    vi.mocked(oauthClientsApi.findAll)
+      .mockResolvedValueOnce([clientWithResponsible])
+      .mockResolvedValueOnce([clientWithResponsible]);
+    vi.mocked(oauthClientsApi.update).mockResolvedValueOnce(clientWithResponsible);
+    vi.mocked(studentsApi.findAll).mockResolvedValueOnce({
+      data: [
+        ...mockStudents,
+        {
+          id: 'student-uuid-2',
+          username: 'asmith',
+          first_name: 'Alice',
+          last_name: 'Smith',
+          email: 'asmith@example.com',
+          account_status: 'active' as const,
+          dni: 99887766,
+          birth_date: '1999-03-15',
+          hasPassword: true,
+          domainRole: { id: 1, name: 'Estudiante' },
+          specialty: { id: 1, name: 'ISI' },
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+        },
+      ],
+      total: 2,
+    });
+
+    const { container } = renderClients();
+    await screen.findByText('Torneito App');
+
+    // Click edit
+    const cardButtons = container.querySelectorAll('.mantine-Card-root')[0].querySelectorAll('button');
+    fireEvent.click(cardButtons[1]);
+
+    // Cambiar responsable en el selector
+    const responsibleInput = await screen.findByPlaceholderText(/Buscar por username o nombre/i);
+    fireEvent.change(responsibleInput, { target: { value: 'asmith' } });
+    const option = await screen.findByRole('option', { name: /asmith/i });
+    fireEvent.click(option);
+
+    const nameInput = screen.getByLabelText(/Nombre de la app/i);
+    fireEvent.submit(nameInput.closest('form')!);
+
+    await waitFor(() => {
+      expect(oauthClientsApi.update).toHaveBeenCalledWith(1, { responsibleUserId: 'student-uuid-2' });
+    });
   });
 
   it('debería suspender, reactivar, regenerar secret y eliminar un cliente', async () => {

@@ -125,6 +125,17 @@ export interface UpdateStudentPayload {
   specialty_id?: number;
 }
 
+export interface ResponsibleApp {
+  id: number;
+  clientName: string;
+}
+
+export interface DeleteStudentConflictError {
+  statusCode: 409;
+  message: string;
+  responsibleApps: ResponsibleApp[];
+}
+
 export interface DeleteStudentPayload {
   password?: string;
 }
@@ -199,6 +210,7 @@ export interface CreateOAuthClientPayload {
 export interface UpdateOAuthClientPayload {
   clientName?: string;
   redirectUris?: string[];
+  responsibleUserId?: string;
 }
 
 export interface ChangeResponsibleUserPayload {
