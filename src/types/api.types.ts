@@ -162,6 +162,13 @@ export interface ImportConfirmResult {
 
 // ── OAuth Clients ────────────────────────────────────────────────────────────
 
+export interface ResponsibleUserResponse {
+  id: string;
+  username: string;
+  fullName: string;
+  censoredEmail: string;
+}
+
 // Respuesta general — sin clientSecret (el hash no sirve para nada en el front)
 export interface OAuthClientResponse {
   id: number;
@@ -170,6 +177,7 @@ export interface OAuthClientResponse {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  responsibleUser: ResponsibleUserResponse | null;
 }
 
 // Respuesta de create y regenerate-secret — incluye el plainSecret una sola vez
@@ -179,11 +187,13 @@ export interface OAuthClientCreatedResponse {
   redirectUris: string[];
   createdAt: string;
   updatedAt: string;
+  responsibleUser: ResponsibleUserResponse | null;
 }
 
 export interface CreateOAuthClientPayload {
   clientName: string;
   redirectUris: string[];
+  responsibleUserId: string;
 }
 
 export interface UpdateOAuthClientPayload {
@@ -191,8 +201,6 @@ export interface UpdateOAuthClientPayload {
   redirectUris?: string[];
 }
 
-// plainSecret es obligatorio — viene del create o regenerate inmediatamente antes
-export interface SendCredentialsEmailPayload {
-  to: string;
-  // plainSecret eliminado: el backend lo recupera de Redis. El frontend solo necesita indicar el destinatario.
+export interface ChangeResponsibleUserPayload {
+  responsibleUserId: string;
 }

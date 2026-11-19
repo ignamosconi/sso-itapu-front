@@ -8,7 +8,7 @@ import {
   DeleteSelfPayload,
   CreateOAuthClientPayload,
   UpdateOAuthClientPayload,
-  SendCredentialsEmailPayload,
+  ChangeResponsibleUserPayload,
 } from '@/types/api.types';
 
 export const adminsApi = {
@@ -71,9 +71,16 @@ export const oauthClientsApi = {
     return data;
   },
 
-  // plainSecret debe pasarse desde la respuesta de create o regenerateSecret
-  sendCredentialsByEmail: async (id: number, payload: SendCredentialsEmailPayload): Promise<void> => {
-    await apiClient.post(`/admin/clients/${id}/send-credentials`, payload);
+  sendCredentialsByEmail: async (id: number): Promise<void> => {
+    await apiClient.post(`/admin/clients/${id}/send-credentials`);
+  },
+
+  changeResponsibleUser: async (id: number, payload: ChangeResponsibleUserPayload): Promise<OAuthClientResponse> => {
+    const { data } = await apiClient.patch<OAuthClientResponse>(
+      `/admin/clients/${id}/responsible-user`,
+      payload,
+    );
+    return data;
   },
 
   suspend: async (id: number): Promise<OAuthClientResponse> => {

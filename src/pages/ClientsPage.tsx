@@ -12,11 +12,13 @@ import {
   IconPlayerPause, IconPlayerPlay,
 } from '@tabler/icons-react';
 import { oauthClientsApi } from '@/api/adminApi';
+import { studentsApi } from '@/api/studentsApi';
 import {
   OAuthClientResponse,
   OAuthClientCreatedResponse,
   CreateOAuthClientPayload,
   UpdateOAuthClientPayload,
+  StudentResponse,
 } from '@/types/api.types';
 
 const PAGE_SIZE_OPTIONS = ['5', '10', '20', '50'];
@@ -153,6 +155,14 @@ function ClientCard({
             <Text size="xs" c="dimmed">
               Estado: {client.isActive ? 'Activo' : 'Suspendido'}
             </Text>
+
+            {client.responsibleUser && (
+              <Box>
+                <Text size="xs" c="dimmed" mb={2}>Responsable</Text>
+                <Text size="xs">{client.responsibleUser.fullName} (@{client.responsibleUser.username})</Text>
+                <Text size="xs" c="dimmed">{client.responsibleUser.censoredEmail}</Text>
+              </Box>
+            )}
           </Stack>
         </>
       )}
@@ -173,6 +183,7 @@ export function ClientsPage() {
   const [editing, setEditing] = useState<OAuthClientResponse | null>(null);
   const [formName, setFormName] = useState('');
   const [formUris, setFormUris] = useState<string[]>(['']);
+  const [formResponsibleUserId, setFormResponsibleUserId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
@@ -181,11 +192,24 @@ export function ClientsPage() {
   const [secretModalData, setSecretModalData] = useState<OAuthClientCreatedResponse | null>(null);
   const [secretModalMode, setSecretModalMode] = useState<'created' | 'regenerated'>('created');
 
-  // Modal email — solo disponible desde el modal de secret
-  const [emailAddress, setEmailAddress] = useState('');
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [emailError, setEmailError] = useState<string | null>(null);
-  const [emailSuccess, setEmailSuccess] = useState(false);
+  // Envío desde modal de secret (create/regenerate)
+  const [sendCredLoading, setSendCredLoading] = useState(false);
+  const [sendCredError, setSendCredError] = useState<string | null>(null);
+  const [sendCredSuccess, setSendCredSuccess] = useState(false);
+
+  // Modal de reenvío/cambio de responsable desde la card
+  const [emailFromCardModalOpen, setEmailFromCardModalOpen] = useState(false);
+  const [emailFromCardClient, setEmailFromCardClient] = useState<OAuthClientResponse | null>(null);
+  const [changingResponsible, setChangingResponsible] = useState(false);
+  const [newResponsibleUserId, setNewResponsibleUserId] = useState<string | null>(null);
+  const [emailFromCardLoading, setEmailFromCardLoading] = useState(false);
+  const [emailFromCardError, setEmailFromCardError] = useState<string | null>(null);
+  const [emailFromCardSuccess, setEmailFromCardSuccess] = useState(false);
+  const [changeResponsibleLoading, setChangeResponsibleLoading] = useState(false);
+
+  // Estudiantes activos para el selector
+  const [activeStudents, setActiveStudents] = useState<StudentResponse[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
 
   // Modal eliminar
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -217,6 +241,20 @@ export function ClientsPage() {
 
   useEffect(() => { void load(); }, []);
 
+
+  const loadActiveStudents = async () => {
+    if (activeStudents.length > 0) return;
+    setStudentsLoading(true);
+    try {
+      const result = await studentsApi.findAll({ accountStatus: 'active', limit: 500 });
+      setActiveStudents(result.data);
+    } catch {
+      // fail silently, el selector simplemente queda vacío
+    } finally {
+      setStudentsLoading(false);
+    }
+  };
+
   const toggleOpen = (id: number) => {
     setOpenIds(prev => {
       const next = new Set(prev);
@@ -232,8 +270,10 @@ export function ClientsPage() {
     setEditing(null);
     setFormName('');
     setFormUris(['']);
+    setFormResponsibleUserId(null);
     setFormError(null);
     setModalOpen(true);
+    void loadActiveStudents();
   };
 
   const openEdit = (client: OAuthClientResponse) => {
@@ -277,16 +317,24 @@ export function ClientsPage() {
         setModalOpen(false);
         await load(true);
       } else {
-        const payload: CreateOAuthClientPayload = { clientName: formName, redirectUris: cleanUris };
+        if (!formResponsibleUserId) {
+          setFormError('Seleccioná un usuario responsable.');
+          setFormLoading(false);
+          return;
+        }
+        const payload: CreateOAuthClientPayload = {
+          clientName: formName,
+          redirectUris: cleanUris,
+          responsibleUserId: formResponsibleUserId,
+        };
         const created = await oauthClientsApi.create(payload);
         setModalOpen(false);
         await load(true);
         // Mostrar el secret una sola vez
         setSecretModalData(created);
         setSecretModalMode('created');
-        setEmailAddress('');
-        setEmailError(null);
-        setEmailSuccess(false);
+        setSendCredError(null);
+        setSendCredSuccess(false);
         setSecretModalOpen(true);
       }
     } catch (err) {
@@ -338,9 +386,8 @@ export function ClientsPage() {
       // Mostrar el nuevo secret una sola vez
       setSecretModalData(result);
       setSecretModalMode('regenerated');
-      setEmailAddress('');
-      setEmailError(null);
-      setEmailSuccess(false);
+      setSendCredError(null);
+      setSendCredSuccess(false);
       setSecretModalOpen(true);
     } catch {
       setError('Error al regenerar el secret.');
@@ -371,23 +418,56 @@ export function ClientsPage() {
     }
   };
 
-  // ── Enviar credenciales por email ──────────────────────────────────────────
-  const handleSendEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // ── Enviar credenciales desde modal de secret ─────────────────────────────
+  const handleSendCredentials = async () => {
     if (!secretModalData) return;
-    setEmailError(null);
-    setEmailLoading(true);
+    setSendCredError(null);
+    setSendCredLoading(true);
     try {
-      // No envía el plainSecret: el backend lo recupera de Redis.
-      await oauthClientsApi.sendCredentialsByEmail(secretModalData.id, {
-        to: emailAddress,
-      });
-      setEmailSuccess(true);
+      await oauthClientsApi.sendCredentialsByEmail(secretModalData.id);
+      setSendCredSuccess(true);
     } catch (err) {
       const axiosError = err as { response?: { data?: { message?: string } } };
-      setEmailError(axiosError?.response?.data?.message ?? 'Error al enviar el email.');
+      setSendCredError(axiosError?.response?.data?.message ?? 'Error al enviar el email.');
     } finally {
-      setEmailLoading(false);
+      setSendCredLoading(false);
+    }
+  };
+
+  // ── Enviar credenciales desde card (reenvío) ──────────────────────────────
+  const handleSendCredentialsFromCard = async () => {
+    if (!emailFromCardClient) return;
+    setEmailFromCardError(null);
+    setEmailFromCardLoading(true);
+    try {
+      await oauthClientsApi.sendCredentialsByEmail(emailFromCardClient.id);
+      setEmailFromCardSuccess(true);
+      await load(true);
+    } catch (err) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      setEmailFromCardError(axiosError?.response?.data?.message ?? 'Error al enviar el email.');
+    } finally {
+      setEmailFromCardLoading(false);
+    }
+  };
+
+  const handleChangeResponsible = async () => {
+    if (!emailFromCardClient || !newResponsibleUserId) return;
+    setChangeResponsibleLoading(true);
+    setEmailFromCardError(null);
+    try {
+      const updated = await oauthClientsApi.changeResponsibleUser(emailFromCardClient.id, {
+        responsibleUserId: newResponsibleUserId,
+      });
+      setEmailFromCardClient(updated);
+      setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
+      setChangingResponsible(false);
+      setNewResponsibleUserId(null);
+    } catch (err) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      setEmailFromCardError(axiosError?.response?.data?.message ?? 'Error al cambiar el responsable.');
+    } finally {
+      setChangeResponsibleLoading(false);
     }
   };
 
@@ -468,10 +548,14 @@ export function ClientsPage() {
               onEdit={openEdit}
               onDelete={openDelete}
               onRegenerate={openRegenerate}
-              onEmail={() => {
-                // El email se envía solo desde el modal de secret donde está el plainSecret.
-                // Si el admin quiere reenviar credenciales sin regenerar, debe regenerar el secret.
-                setError('Para enviar las credenciales por email, regenerá el secret y completá el pop-up.');
+              onEmail={(client) => {
+                setEmailFromCardClient(client);
+                setChangingResponsible(false);
+                setNewResponsibleUserId(null);
+                setEmailFromCardError(null);
+                setEmailFromCardSuccess(false);
+                setEmailFromCardModalOpen(true);
+                void loadActiveStudents();
               }}
               onSuspend={handleSuspend}
               onActivate={handleActivate}
@@ -538,6 +622,26 @@ export function ClientsPage() {
               Agregar URI
             </Button>
           )}
+
+          {!editing && (
+            <Select
+              label="Usuario responsable"
+              placeholder={studentsLoading ? 'Cargando usuarios...' : 'Buscar por username o nombre...'}
+              data={activeStudents.map(s => ({
+                value: s.id,
+                label: `${s.username} — ${s.first_name} ${s.last_name}`,
+              }))}
+              value={formResponsibleUserId}
+              onChange={setFormResponsibleUserId}
+              searchable
+              clearable
+              disabled={studentsLoading}
+              required
+              mb="md"
+              description="Debe ser un usuario activo. Recibirá las credenciales por email."
+            />
+          )}
+
           <Button
             type="submit"
             fullWidth
@@ -614,42 +718,146 @@ export function ClientsPage() {
           </Text>
         </Alert>
 
-        {!emailSuccess ? (
+        {!sendCredSuccess ? (
           <>
-            {emailError && (
+            {sendCredError && (
               <Alert icon={<IconAlertCircle size={16} />} color="red" mb="sm" radius="md">
-                {emailError}
+                {sendCredError}
               </Alert>
             )}
-            <form onSubmit={(e) => void handleSendEmail(e)}>
-              <TextInput
-                label="Email del desarrollador"
-                placeholder="desarrollador@frvm.utn.edu.ar"
-                value={emailAddress}
-                onChange={(e) => setEmailAddress(e.target.value)}
-                type="email"
-                mb="md"
-                required
-                data-autofocus
-              />
-              <Button
-                type="submit"
-                fullWidth
-                leftSection={<IconMail size={14} />}
-                loading={emailLoading}
-                style={{ background: '#f5a705', color: '#1a1200' }}
-              >
-                Enviar credenciales por email
-              </Button>
-            </form>
+            {secretModalData?.responsibleUser ? (
+              <Card withBorder radius="sm" p="sm" mb="md">
+                <Text size="xs" c="dimmed" mb={2}>Destinatario</Text>
+                <Text size="sm" fw={600}>{secretModalData.responsibleUser.fullName}</Text>
+                <Text size="xs" c="dimmed">@{secretModalData.responsibleUser.username}</Text>
+                <Text size="xs" c="dimmed">{secretModalData.responsibleUser.censoredEmail}</Text>
+              </Card>
+            ) : (
+              <Alert color="yellow" mb="md" radius="md">
+                Este cliente no tiene usuario responsable asignado. Asigná uno desde la lista de clientes.
+              </Alert>
+            )}
+            <Button
+              fullWidth
+              leftSection={<IconMail size={14} />}
+              loading={sendCredLoading}
+              disabled={!secretModalData?.responsibleUser}
+              onClick={() => void handleSendCredentials()}
+              style={{ background: '#f5a705', color: '#1a1200' }}
+            >
+              Enviar credenciales por email
+            </Button>
           </>
         ) : (
           <>
             <Alert icon={<IconCheck size={16} />} color="green" mb="md" radius="md">
-              Credenciales enviadas correctamente a <strong>{emailAddress}</strong>.
+              Credenciales enviadas a <strong>{secretModalData?.responsibleUser?.censoredEmail}</strong>.
               El destinatario recibirá un link de un solo uso válido por 24 horas.
             </Alert>
-            <Button fullWidth variant="dark" onClick={() => setSecretModalOpen(false)}>
+            <Button fullWidth variant="default" onClick={() => setSecretModalOpen(false)}>
+              Cerrar
+            </Button>
+          </>
+        )}
+      </Modal>
+      
+      {/* ── Modal enviar/reenviar credenciales desde card ── */}
+      <Modal
+        opened={emailFromCardModalOpen}
+        onClose={() => {
+          setEmailFromCardModalOpen(false);
+          setChangingResponsible(false);
+          setNewResponsibleUserId(null);
+          setEmailFromCardError(null);
+          setEmailFromCardSuccess(false);
+        }}
+        title="Enviar credenciales"
+        centered
+        size="sm"
+      >
+        {!emailFromCardSuccess ? (
+          <>
+            {emailFromCardError && (
+              <Alert icon={<IconAlertCircle size={16} />} color="red" mb="sm" radius="md">
+                {emailFromCardError}
+              </Alert>
+            )}
+            {!changingResponsible ? (
+              <>
+                {emailFromCardClient?.responsibleUser ? (
+                  <Card withBorder radius="sm" p="sm" mb="md">
+                    <Text size="xs" c="dimmed" mb={2}>Usuario responsable actual</Text>
+                    <Text size="sm" fw={600}>{emailFromCardClient.responsibleUser.fullName}</Text>
+                    <Text size="xs" c="dimmed">@{emailFromCardClient.responsibleUser.username}</Text>
+                    <Text size="xs" c="dimmed">{emailFromCardClient.responsibleUser.censoredEmail}</Text>
+                  </Card>
+                ) : (
+                  <Alert color="yellow" mb="md" radius="md">
+                    Este cliente no tiene usuario responsable asignado.
+                  </Alert>
+                )}
+                <Stack gap="sm">
+                  <Button
+                    fullWidth
+                    leftSection={<IconMail size={14} />}
+                    loading={emailFromCardLoading}
+                    disabled={!emailFromCardClient?.responsibleUser}
+                    onClick={() => void handleSendCredentialsFromCard()}
+                    style={{ background: '#f5a705', color: '#1a1200' }}
+                  >
+                    Enviar credenciales al responsable actual
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="subtle"
+                    onClick={() => { setChangingResponsible(true); void loadActiveStudents(); }}
+                  >
+                    Cambiar usuario responsable
+                  </Button>
+                </Stack>
+              </>
+            ) : (
+              <>
+                <Select
+                  label="Nuevo usuario responsable"
+                  placeholder={studentsLoading ? 'Cargando usuarios...' : 'Buscar por username o nombre...'}
+                  data={activeStudents.map(s => ({
+                    value: s.id,
+                    label: `${s.username} — ${s.first_name} ${s.last_name}`,
+                  }))}
+                  value={newResponsibleUserId}
+                  onChange={setNewResponsibleUserId}
+                  searchable
+                  clearable
+                  disabled={studentsLoading}
+                  mb="md"
+                />
+                <Group gap="sm">
+                  <Button variant="subtle" onClick={() => setChangingResponsible(false)} style={{ flex: 1 }}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    loading={changeResponsibleLoading}
+                    disabled={!newResponsibleUserId}
+                    onClick={() => void handleChangeResponsible()}
+                    style={{ flex: 1, background: '#f5a705', color: '#1a1200' }}
+                  >
+                    Guardar responsable
+                  </Button>
+                </Group>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <Alert icon={<IconCheck size={16} />} color="green" mb="md" radius="md">
+              Credenciales enviadas a <strong>{emailFromCardClient?.responsibleUser?.censoredEmail}</strong>.
+              El destinatario recibirá un link de un solo uso válido por 24 horas.
+            </Alert>
+            <Button fullWidth variant="default" onClick={() => {
+              setEmailFromCardModalOpen(false);
+              setEmailFromCardSuccess(false);
+            }}>
               Cerrar
             </Button>
           </>
