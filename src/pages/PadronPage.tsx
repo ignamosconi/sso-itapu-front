@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useDebouncedValue } from '@mantine/hooks';
 import {
   Box, Title, Text, Table, Group, Badge, TextInput, Select,
   ActionIcon, Loader, Center, Alert, Pagination, Modal,
@@ -34,6 +35,11 @@ export function PadronPage() {
   const [pageSize, setPageSize] = useState(10);
   const PAGE_SIZE_OPTIONS = ['5', '10', '20', '50'];
 
+  const [debouncedSearch] = useDebouncedValue(search, 300);
+  const [debouncedStatus] = useDebouncedValue(statusFilter, 300);
+  const [debouncedRole] = useDebouncedValue(roleFilter, 300);
+  const [debouncedSpec] = useDebouncedValue(specFilter, 300);
+
   const [roles, setRoles] = useState<DomainRoleResponse[]>([]);
   const [specs, setSpecs] = useState<SpecialtyResponse[]>([]);
 
@@ -62,10 +68,10 @@ export function PadronPage() {
     if (!silent) setLoading(true);
     try {
       const res = await studentsApi.findAll({
-        search: search || undefined,
-        accountStatus: statusFilter ?? undefined,
-        domainRoleId: roleFilter ? parseInt(roleFilter, 10) : undefined,
-        specialtyId: specFilter ? parseInt(specFilter, 10) : undefined,
+        search: debouncedSearch || undefined,
+        accountStatus: debouncedStatus ?? undefined,
+        domainRoleId: debouncedRole ? parseInt(debouncedRole, 10) : undefined,
+        specialtyId: debouncedSpec ? parseInt(debouncedSpec, 10) : undefined,
         page,
         limit: pageSize,
       });
@@ -76,7 +82,7 @@ export function PadronPage() {
   };
 
   // oxlint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void load(); }, [search, statusFilter, roleFilter, specFilter, page, pageSize]);
+  useEffect(() => { void load(); }, [debouncedSearch, debouncedStatus, debouncedRole, debouncedSpec, page, pageSize]);
   useEffect(() => {
     void rolesApi.findAll().then(setRoles);
     void specialtiesApi.findAll().then(setSpecs);
