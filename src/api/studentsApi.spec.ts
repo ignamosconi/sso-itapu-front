@@ -27,6 +27,17 @@ describe('studentsApi', () => {
     expect(res).toEqual(mockRes);
   });
 
+  it('requestEmailChange debería hacer POST a /admin/students/:id/email-change', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({});
+
+    await studentsApi.requestEmailChange('u1', { password: 'x', newEmail: 'nuevo@gmail.com' });
+
+    expect(apiClient.post).toHaveBeenCalledWith('/admin/students/u1/email-change', {
+      password: 'x',
+      newEmail: 'nuevo@gmail.com',
+    });
+  });
+
   it('findOne debería consultar /admin/students/:id', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: { id: 'u1' } });
     const res = await studentsApi.findOne('u1');
@@ -49,6 +60,15 @@ describe('studentsApi', () => {
     const res = await studentsApi.create(payload);
     expect(apiClient.post).toHaveBeenCalledWith('/admin/students', payload);
     expect(res.id).toBe('u2');
+  });
+
+  it('getPasswordLock debería consultar /admin/students/:id/password-lock', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { locked: true, retryAfterSeconds: 300 } });
+
+    const res = await studentsApi.getPasswordLock('u1');
+
+    expect(apiClient.get).toHaveBeenCalledWith('/admin/students/u1/password-lock');
+    expect(res).toEqual({ locked: true, retryAfterSeconds: 300 });
   });
 
   it('update debería hacer PATCH a /admin/students/:id', async () => {

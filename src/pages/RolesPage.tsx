@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { includesNormalized } from '@/utils/normalizeText';
 import {
   Box, Title, Text, Button, Table, ActionIcon, Group,
   Modal, TextInput, Alert, Loader, Center, Pagination,
@@ -36,9 +37,7 @@ export function RolesPage() {
   };
   useEffect(() => { void load(); }, []);
 
-  const filtered = roles.filter(r =>
-    r.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = roles.filter(r => includesNormalized(r.name, search));
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
@@ -95,6 +94,7 @@ export function RolesPage() {
           data={PAGE_SIZE_OPTIONS}
           value={String(pageSize)}
           onChange={v => { setPageSize(Number(v)); setPage(1); }}
+          allowDeselect={false}
           w={100}
         />
       </Group>

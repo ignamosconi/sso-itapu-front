@@ -42,6 +42,25 @@ describe('EspecialidadesPage', () => {
     expect(screen.getByText('Ingeniería Química')).toBeInTheDocument();
   });
 
+  it('debería filtrar ignorando tildes y mayúsculas, en ambos sentidos', async () => {
+    vi.mocked(specialtiesApi.findAll).mockResolvedValueOnce([
+      { id: 1, name: 'Ingeniería Química', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+      { id: 2, name: 'Mecanica', createdAt: '2026-01-02T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
+    ]);
+
+    renderEspecialidades();
+    await screen.findByText('Ingeniería Química');
+    const input = screen.getByPlaceholderText(/Buscar por nombre/i);
+
+    fireEvent.change(input, { target: { value: 'quimica' } });
+    expect(screen.getByText('Ingeniería Química')).toBeInTheDocument();
+    expect(screen.queryByText('Mecanica')).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'MECÁNICA' } });
+    expect(screen.getByText('Mecanica')).toBeInTheDocument();
+    expect(screen.queryByText('Ingeniería Química')).not.toBeInTheDocument();
+  });
+
   it('debería crear y eliminar una especialidad correctamente', async () => {
     vi.mocked(specialtiesApi.findAll)
       .mockResolvedValueOnce([])

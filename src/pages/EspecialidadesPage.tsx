@@ -7,6 +7,7 @@ import {
 import { IconPlus, IconTrash, IconAlertCircle, IconSearch } from '@tabler/icons-react';
 import { specialtiesApi } from '@/api/specialtiesApi';
 import { SpecialtyResponse } from '@/types/api.types';
+import { includesNormalized } from '@/utils/normalizeText';
 
 export function EspecialidadesPage() {
   const [especialidades, setEspecialidades] = useState<SpecialtyResponse[]>([]);
@@ -36,9 +37,7 @@ export function EspecialidadesPage() {
   };
   useEffect(() => { void load(); }, []);
 
-  const filtered = especialidades.filter(s =>
-    s.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = especialidades.filter(s => includesNormalized(s.name, search));
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
@@ -95,6 +94,7 @@ export function EspecialidadesPage() {
           data={PAGE_SIZE_OPTIONS}
           value={String(pageSize)}
           onChange={v => { setPageSize(Number(v)); setPage(1); }}
+          allowDeselect={false}
           w={100}
         />
       </Group>

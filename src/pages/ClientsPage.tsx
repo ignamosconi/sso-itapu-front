@@ -1,3 +1,5 @@
+import { useDebouncedCallback } from '@mantine/hooks';
+import { includesNormalized } from '@/utils/normalizeText';
 import { useEffect, useState } from 'react';
 import {
   Box, Title, Text, Button, ActionIcon, Group, Modal,
@@ -207,6 +209,9 @@ export function ClientsPage() {
   // Estudiantes activos para el selector
   const [activeStudents, setActiveStudents] = useState<StudentResponse[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [selectedStudentOption, setSelectedStudentOption] = useState<{ value: string; label: string } | null>(null);
+  const searchStudents = useDebouncedCallback((text: string) => setStudentSearch(text), 300);
 
   // Modal eliminar
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -220,8 +225,6 @@ export function ClientsPage() {
 
   // Filtros y paginación
   const [search, setSearch] = useState('');
-  const [searchId, setSearchId] = useState('');
-  const [searchUri, setSearchUri] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -238,18 +241,30 @@ export function ClientsPage() {
 
   useEffect(() => { void load(); }, []);
 
-  const loadActiveStudents = async () => {
-    if (activeStudents.length > 0) return;
-    setStudentsLoading(true);
-    try {
-      const result = await studentsApi.findAll({ accountStatus: 'active', limit: 500 });
-      setActiveStudents(result.data);
-    } catch {
-      // fail silently, el selector simplemente queda vacío
-    } finally {
-      setStudentsLoading(false);
-    }
-  };
+  // Al elegir una opción, Mantine reescribe su etiqueta en el input: eso no es una búsqueda.
+  const studentQuery = studentSearch === selectedStudentOption?.label ? '' : studentSearch.trim();
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    let ignore = false;
+    const run = async () => {
+      setStudentsLoading(true);
+      try {
+        const result = await studentsApi.findAll({
+          accountStatus: 'active',
+          search: studentQuery || undefined,
+          limit: 20,
+        });
+        if (!ignore) setActiveStudents(result.data);
+      } catch {
+        // el selector conserva la lista anterior
+      } finally {
+        if (!ignore) setStudentsLoading(false);
+      }
+    };
+    void run();
+    return () => { ignore = true; };
+  }, [modalOpen, studentQuery]);
 
   const toggleOpen = (id: number) => {
     setOpenIds(prev => {
@@ -260,6 +275,25 @@ export function ClientsPage() {
     });
   };
 
+  const resetStudentSearch = () => {
+    searchStudents.cancel();
+    setStudentSearch('');
+  };
+
+  const studentOptions = activeStudents.map(s => ({
+    value: s.id,
+    label: `${s.username} — ${s.first_name} ${s.last_name}`,
+  }));
+  // La opción elegida debe seguir en `data` aunque la búsqueda no la devuelva.
+  if (selectedStudentOption && !studentOptions.some(o => o.value === selectedStudentOption.value)) {
+    studentOptions.unshift(selectedStudentOption);
+  }
+
+  const handleResponsibleChange = (value: string | null) => {
+    setFormResponsibleUserId(value);
+    setSelectedStudentOption(studentOptions.find(o => o.value === value) ?? null);
+  };
+
   // ── Crear cliente ──────────────────────────────────────────────────────────
 
   const openCreate = () => {
@@ -267,9 +301,10 @@ export function ClientsPage() {
     setFormName('');
     setFormUris(['']);
     setFormResponsibleUserId(null);
+    setSelectedStudentOption(null);
+    resetStudentSearch();
     setFormError(null);
     setModalOpen(true);
-    void loadActiveStudents();
   };
 
   const openEdit = (client: OAuthClientResponse) => {
@@ -277,9 +312,15 @@ export function ClientsPage() {
     setFormName(client.clientName);
     setFormUris(client.redirectUris.length ? client.redirectUris : ['']);
     setFormResponsibleUserId(client.responsibleUser?.id ?? null);
+    setSelectedStudentOption(
+      client.responsibleUser
+        ? { value: client.responsibleUser.id,
+            label: `${client.responsibleUser.username} — ${client.responsibleUser.fullName}` }
+        : null,
+    );
+    resetStudentSearch();
     setFormError(null);
     setModalOpen(true);
-    void loadActiveStudents();
   };
 
   const handleUriChange = (index: number, value: string) => {
@@ -454,14 +495,11 @@ export function ClientsPage() {
 
   // ── Filtros y paginación ───────────────────────────────────────────────────
 
-  const filtered = clients.filter(c => {
-    const matchName = c.clientName.toLowerCase().includes(search.toLowerCase());
-    const matchId = searchId ? String(c.id).includes(searchId) : true;
-    const matchUri = searchUri
-      ? c.redirectUris.some(u => u.toLowerCase().includes(searchUri.toLowerCase()))
-      : true;
-    return matchName && matchId && matchUri;
-  });
+  const filtered = clients.filter(c =>
+    includesNormalized(c.clientName, search) ||
+    String(c.id).includes(search.trim()) ||
+    c.redirectUris.some(u => includesNormalized(u, search)),
+  );
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -488,30 +526,17 @@ export function ClientsPage() {
 
       <Group mb="md" align="flex-end" wrap="wrap" gap="sm">
         <TextInput
-          placeholder="Buscar por nombre..."
+          placeholder="Buscar por nombre, ID o URI..."
           leftSection={<IconSearch size={14} />}
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          w={200}
-        />
-        <TextInput
-          placeholder="Buscar por ID..."
-          leftSection={<IconSearch size={14} />}
-          value={searchId}
-          onChange={(e) => { setSearchId(e.target.value); setPage(1); }}
-          w={140}
-        />
-        <TextInput
-          placeholder="Buscar por URI..."
-          leftSection={<IconSearch size={14} />}
-          value={searchUri}
-          onChange={(e) => { setSearchUri(e.target.value); setPage(1); }}
-          w={220}
+          w={320}
         />
         <Select
           data={PAGE_SIZE_OPTIONS}
           value={String(pageSize)}
           onChange={(v) => { setPageSize(Number(v)); setPage(1); }}
+          allowDeselect={false}
           w={100}
         />
       </Group>
@@ -603,16 +628,15 @@ export function ClientsPage() {
 
           <Select
             label="Usuario responsable"
-            placeholder={studentsLoading ? 'Cargando usuarios...' : 'Buscar por username o nombre...'}
-            data={activeStudents.map(s => ({
-              value: s.id,
-              label: `${s.username} — ${s.first_name} ${s.last_name}`,
-            }))}
+            placeholder="Buscar por username o nombre..."
+            data={studentOptions}
             value={formResponsibleUserId}
-            onChange={setFormResponsibleUserId}
+            onChange={handleResponsibleChange}
+            onSearchChange={searchStudents}
+            filter={({ options }) => options}
+            nothingFoundMessage={studentsLoading ? 'Buscando...' : 'Sin resultados'}
             searchable
             clearable
-            disabled={studentsLoading}
             required
             mb="md"
             maxDropdownHeight={200}

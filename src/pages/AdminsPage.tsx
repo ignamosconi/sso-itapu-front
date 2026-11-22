@@ -10,6 +10,7 @@ import {
 import { adminsApi } from '@/api/adminApi';
 import { AdminResponse, CreateAdminPayload } from '@/types/api.types';
 import { useAuthStore } from '@/store/authStore';
+import { includesNormalized } from '@/utils/normalizeText';
 
 const PAGE_SIZE_OPTIONS = ['5', '10', '20', '50'];
 
@@ -91,9 +92,7 @@ export function AdminsPage() {
 
   // ── Filtros y paginación ───────────────────────────────────────────────────
 
-  const filtered = admins.filter(a =>
-    a.username.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = admins.filter(a => includesNormalized(a.username, search));
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
@@ -133,6 +132,7 @@ export function AdminsPage() {
           data={PAGE_SIZE_OPTIONS}
           value={String(pageSize)}
           onChange={(v) => { setPageSize(Number(v)); setPage(1); }}
+          allowDeselect={false}
           w={100}
         />
       </Group>
