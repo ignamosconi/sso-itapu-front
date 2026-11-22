@@ -212,6 +212,10 @@ export function ClientsPage() {
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudentOption, setSelectedStudentOption] = useState<{ value: string; label: string } | null>(null);
   const searchStudents = useDebouncedCallback((text: string) => setStudentSearch(text), 300);
+  // Mantine solo resalta la primera opción al escribir, y lo hace sobre la lista que ya estaba en pantalla
+  // (la vieja, porque la búsqueda es en el servidor). Este "pulso" se enciende un instante cuando llegan
+  // los resultados para que resalte la primera opción de la lista nueva.
+  const [highlightFirstStudent, setHighlightFirstStudent] = useState(false);
 
   // Modal eliminar
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -255,7 +259,10 @@ export function ClientsPage() {
           search: studentQuery || undefined,
           limit: 20,
         });
-        if (!ignore) setActiveStudents(result.data);
+        if (!ignore) {
+          setActiveStudents(result.data);
+          setHighlightFirstStudent(true);
+        }
       } catch {
         // el selector conserva la lista anterior
       } finally {
@@ -265,6 +272,10 @@ export function ClientsPage() {
     void run();
     return () => { ignore = true; };
   }, [modalOpen, studentQuery]);
+
+  useEffect(() => {
+    if (highlightFirstStudent) setHighlightFirstStudent(false);
+  }, [highlightFirstStudent]);
 
   const toggleOpen = (id: number) => {
     setOpenIds(prev => {
@@ -634,6 +645,8 @@ export function ClientsPage() {
             onChange={handleResponsibleChange}
             onSearchChange={searchStudents}
             filter={({ options }) => options}
+            selectFirstOptionOnChange={highlightFirstStudent}
+            selectFirstOptionOnDropdownOpen={!formResponsibleUserId}
             nothingFoundMessage={studentsLoading ? 'Buscando...' : 'Sin resultados'}
             searchable
             clearable

@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
 import { ClientsPage } from './ClientsPage';
 import { oauthClientsApi } from '@/api/adminApi';
 import { studentsApi } from '@/api/studentsApi';
 import { OAuthClientResponse } from '@/types/api.types';
+const { firstOnChangeSpy } = vi.hoisted(() => ({ firstOnChangeSpy: vi.fn() }));
 // ── Mock: Select searchable ───────────────────────────────────────────
 // Mantine v7 Combobox usa Transition + Popover internamente.
 // En jsdom `transitionend` nunca se dispara, así que el dropdown del
@@ -23,6 +24,9 @@ vi.mock('@mantine/core', async (importOriginal) => {
     );
     const [search, setSearch] = R.useState('');
     const [open, setOpen]     = R.useState(false);
+    R.useEffect(() => {
+      if (searchable) firstOnChangeSpy(!!props.selectFirstOptionOnChange);
+    }, [searchable, props.selectFirstOptionOnChange]);
 
     if (!searchable) return R.createElement(mod.Select, props);
 
@@ -35,6 +39,7 @@ vi.mock('@mantine/core', async (importOriginal) => {
       R.createElement('input', {
         placeholder,
         value: search,
+        'data-first-on-open': String(!!props.selectFirstOptionOnDropdownOpen),
         onChange: (e: any) => { setSearch(e.target.value); setOpen(true); props.onSearchChange?.(e.target.value); },
         onFocus:  ()      => setOpen(true),
       }),
@@ -229,11 +234,58 @@ describe('ClientsPage', () => {
     });
 
     fireEvent.click(await screen.findByRole('option', { name: /jdoe/i }));
-    await new Promise(resolve => setTimeout(resolve, 450));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 450)); });
 
     expect(studentsApi.findAll).not.toHaveBeenCalledWith(
       expect.objectContaining({ search: 'jdoe — John Doe' }),
     );
+  });
+
+  it('debería resaltar la primera opción del selector al abrir y recién cuando llegan los resultados de una búsqueda', async () => {
+    type StudentsPage = Awaited<ReturnType<typeof studentsApi.findAll>>;
+    let resolveSearch!: (page: StudentsPage) => void;
+    vi.mocked(oauthClientsApi.findAll).mockResolvedValueOnce([]);
+    vi.mocked(studentsApi.findAll)
+      .mockResolvedValueOnce({ data: mockStudents, total: 1 })
+      .mockReturnValueOnce(new Promise<StudentsPage>(resolve => { resolveSearch = resolve; }));
+
+    renderClients();
+    fireEvent.click(await screen.findByRole('button', { name: /Nuevo cliente/i }));
+    const input = await screen.findByPlaceholderText(/Buscar por username o nombre/i);
+
+    // Sin responsable elegido, el cursor aparece apenas se abre el listado
+    expect(input).toHaveAttribute('data-first-on-open', 'true');
+
+    // Esperar a que termine la carga inicial (si el selector ya estaba montado, también dispara el pulso)
+    await waitFor(() => expect(studentsApi.findAll).toHaveBeenCalledTimes(1));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
+    firstOnChangeSpy.mockClear();
+
+    // Mientras la búsqueda está en curso la lista en pantalla es la vieja: no se resalta nada
+    fireEvent.change(input, { target: { value: 'asmith' } });
+    await waitFor(() => expect(studentsApi.findAll).toHaveBeenCalledTimes(2));
+    expect(firstOnChangeSpy).not.toHaveBeenCalledWith(true);
+
+    // Al llegar los resultados el pulso se enciende y se apaga de nuevo
+    await act(async () => { resolveSearch({ data: [mockStudentAlice], total: 1 }); });
+    await waitFor(() => expect(firstOnChangeSpy).toHaveBeenCalledWith(true));
+    await waitFor(() => expect(firstOnChangeSpy).toHaveBeenLastCalledWith(false));
+  });
+
+  it('no debería mover el cursor a la primera opción al abrir si ya hay un responsable elegido', async () => {
+    const clientWithResponsible: OAuthClientResponse = {
+      ...mockClients[0],
+      responsibleUser: mockResponsibleUser,
+    };
+    vi.mocked(oauthClientsApi.findAll).mockResolvedValueOnce([clientWithResponsible]);
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: mockStudents, total: 1 });
+
+    const { container } = renderClients();
+    await screen.findByText('Torneito App');
+    fireEvent.click(container.querySelectorAll('.mantine-Card-root')[0].querySelectorAll('button')[1]);
+
+    const input = await screen.findByPlaceholderText(/Buscar por username o nombre/i);
+    expect(input).toHaveAttribute('data-first-on-open', 'false');
   });
 
   it('debería conservar al responsable actual en el selector aunque la búsqueda no lo devuelva', async () => {
