@@ -42,6 +42,27 @@ describe('RolesPage', () => {
     expect(screen.getByText('Docente')).toBeInTheDocument();
   });
 
+  it('debería filtrar ignorando tildes y mayúsculas, en ambos sentidos', async () => {
+    vi.mocked(rolesApi.findAll).mockResolvedValueOnce([
+      { id: 1, name: 'Jefe de Área', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+      { id: 2, name: 'Docente', createdAt: '2026-01-02T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
+    ]);
+
+    renderRoles();
+    await screen.findByText('Jefe de Área');
+    const input = screen.getByPlaceholderText(/Buscar por nombre/i);
+
+    // Sin tilde encuentra el nombre que la tiene
+    fireEvent.change(input, { target: { value: 'area' } });
+    expect(screen.getByText('Jefe de Área')).toBeInTheDocument();
+    expect(screen.queryByText('Docente')).not.toBeInTheDocument();
+
+    // Con tilde encuentra el nombre que no la tiene
+    fireEvent.change(input, { target: { value: 'DÓCENTE' } });
+    expect(screen.getByText('Docente')).toBeInTheDocument();
+    expect(screen.queryByText('Jefe de Área')).not.toBeInTheDocument();
+  });
+
   it('debería crear un nuevo rol desde el modal', async () => {
     vi.mocked(rolesApi.findAll)
       .mockResolvedValueOnce([])
