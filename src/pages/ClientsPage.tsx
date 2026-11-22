@@ -222,6 +222,16 @@ export function ClientsPage() {
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Cambio de responsable pendiente de confirmar: no se guarda nada hasta que el admin acepta regenerar el secret
+  const [pendingResponsibleEdit, setPendingResponsibleEdit] = useState<{
+    clientId: number;
+    payload: UpdateOAuthClientPayload;
+    clientName: string;
+    newResponsible: string;
+    hadPreviousResponsible: boolean;
+  } | null>(null);
+  const [pendingEditLoading, setPendingEditLoading] = useState(false);
+
   // Modal regenerar (confirmación)
   const [regenerateModalOpen, setRegenerateModalOpen] = useState(false);
   const [regenerateTargetId, setRegenerateTargetId] = useState<number | null>(null);
@@ -366,6 +376,17 @@ export function ClientsPage() {
         if (formResponsibleUserId !== (editing.responsibleUser?.id ?? null)) {
           payload.responsibleUserId = formResponsibleUserId ?? undefined;
         }
+        // Cambiar el responsable obliga a regenerar el secret: no se guarda nada hasta que el admin lo confirme
+        if (payload.responsibleUserId !== undefined) {
+          setPendingResponsibleEdit({
+            clientId: editing.id,
+            payload,
+            clientName: formName,
+            newResponsible: selectedStudentOption?.label ?? '',
+            hadPreviousResponsible: editing.responsibleUser !== null,
+          });
+          return;
+        }
         await oauthClientsApi.update(editing.id, payload);
         setModalOpen(false);
         await load(true);
@@ -448,6 +469,39 @@ export function ClientsPage() {
     } finally {
       setRegenerateLoading(false);
       setRegenerateTargetId(null);
+    }
+  };
+
+  // Confirmó el cambio de responsable: se guardan todos los cambios del formulario y se regenera el secret.
+  const handleConfirmResponsibleEdit = async () => {
+    if (!pendingResponsibleEdit) return;
+    const { clientId, payload } = pendingResponsibleEdit;
+    setPendingEditLoading(true);
+    try {
+      await oauthClientsApi.update(clientId, payload);
+    } catch (err) {
+      // Vuelve al formulario con el mensaje del servidor (por ejemplo, nombre repetido). No se regeneró nada.
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      setFormError(axiosError?.response?.data?.message ?? 'Error al guardar.');
+      setPendingResponsibleEdit(null);
+      setPendingEditLoading(false);
+      return;
+    }
+    setPendingResponsibleEdit(null);
+    setModalOpen(false);
+    try {
+      const result = await oauthClientsApi.regenerateSecret(clientId);
+      await load(true);
+      setSecretModalData(result);
+      setSecretModalMode('regenerated');
+      setSendCredError(null);
+      setSendCredSuccess(false);
+      setSecretModalOpen(true);
+    } catch {
+      await load(true);
+      setError('Se guardaron los cambios, pero no se pudo regenerar el secret. Regeneralo desde la lista de clientes.');
+    } finally {
+      setPendingEditLoading(false);
     }
   };
 
@@ -713,6 +767,45 @@ export function ClientsPage() {
         </Group>
       </Modal>
 
+      {/* ── Modal confirmar cambio de responsable (obliga a regenerar el secret) ── */}
+      <Modal
+        opened={pendingResponsibleEdit !== null}
+        onClose={() => { if (!pendingEditLoading) setPendingResponsibleEdit(null); }}
+        title="Cambiar responsable"
+        centered
+        size="sm"
+      >
+        <Text size="sm" mb="sm">
+          Vas a cambiar el responsable de <strong>{pendingResponsibleEdit?.clientName}</strong> a{' '}
+          <strong>{pendingResponsibleEdit?.newResponsible}</strong>.
+        </Text>
+        <Text size="sm" mb="sm">
+          {pendingResponsibleEdit?.hadPreviousResponsible
+            ? 'El responsable anterior todavía conoce el Client Secret y el nuevo no lo recibió, así que '
+            : 'El nuevo responsable todavía no recibió las credenciales, así que '}
+          al guardar también se va a <strong>regenerar el secret</strong>. El actual queda invalidado
+          inmediatamente y las integraciones que lo usen dejan de funcionar hasta que se actualice.
+        </Text>
+        <Text size="xs" c="dimmed" mb="lg">
+          Si cancelás, no se guarda ningún cambio y volvés al formulario.
+        </Text>
+        <Group justify="flex-end" gap="sm">
+          <Button
+            variant="subtle"
+            disabled={pendingEditLoading}
+            onClick={() => setPendingResponsibleEdit(null)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            color="orange"
+            loading={pendingEditLoading}
+            onClick={() => void handleConfirmResponsibleEdit()}
+          >
+            Guardar y regenerar secret
+          </Button>
+        </Group>
+      </Modal>
       {/* ── Modal secret (después de crear o regenerar) ── */}
       <Modal
         opened={secretModalOpen}

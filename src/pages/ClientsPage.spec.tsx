@@ -143,6 +143,30 @@ function renderClients() {
   );
 }
 
+// Abre la edición del cliente 1 (que ya tiene responsable), opcionalmente le cambia el nombre,
+// elige a "asmith" como nuevo responsable y envía el formulario.
+async function editResponsibleToAlice(newName?: string) {
+  const clientWithResponsible: OAuthClientResponse = {
+    ...mockClients[0],
+    responsibleUser: mockResponsibleUser,
+  };
+  vi.mocked(oauthClientsApi.findAll).mockResolvedValue([clientWithResponsible]);
+  vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [...mockStudents, mockStudentAlice], total: 2 });
+
+  const { container } = renderClients();
+  await screen.findByText('Torneito App');
+  fireEvent.click(container.querySelectorAll('.mantine-Card-root')[0].querySelectorAll('button')[1]);
+
+  if (newName) {
+    fireEvent.change(await screen.findByLabelText(/Nombre de la app/i), { target: { value: newName } });
+  }
+  fireEvent.change(await screen.findByPlaceholderText(/Buscar por username o nombre/i), {
+    target: { value: 'asmith' },
+  });
+  fireEvent.click(await screen.findByRole('option', { name: /asmith/i }));
+  fireEvent.submit(screen.getByLabelText(/Nombre de la app/i).closest('form')!);
+}
+
 describe('ClientsPage', () => {
   beforeEach(() => vi.resetAllMocks());
   afterEach(cleanup);
@@ -382,58 +406,72 @@ describe('ClientsPage', () => {
     });
 
     await screen.findByText('Torneito v2');
+
+    // Editar solo el nombre no ofrece regenerar el secret
+    expect(screen.queryByText(/^Cambiar responsable$/i)).not.toBeInTheDocument();
   });
 
-  it('debería editar un cliente cambiando el usuario responsable', async () => {
-    const clientWithResponsible: OAuthClientResponse = {
+  it('debería pedir confirmación al cambiar el responsable y no guardar nada si se cancela', async () => {
+    await editResponsibleToAlice('Torneito v2');
+
+    expect(await screen.findByText(/^Cambiar responsable$/i)).toBeInTheDocument();
+    expect(oauthClientsApi.update).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Cancelar$/i }));
+    await waitFor(() => {
+      expect(screen.queryByText(/^Cambiar responsable$/i)).not.toBeInTheDocument();
+    });
+
+    // Vuelve al formulario con lo que el admin había escrito, sin haber guardado nada
+    expect(screen.getByLabelText(/Nombre de la app/i)).toHaveValue('Torneito v2');
+    expect(oauthClientsApi.update).not.toHaveBeenCalled();
+    expect(oauthClientsApi.regenerateSecret).not.toHaveBeenCalled();
+  });
+
+  it('debería guardar todos los cambios y regenerar el secret al confirmar el cambio de responsable', async () => {
+    vi.mocked(oauthClientsApi.update).mockResolvedValueOnce({
       ...mockClients[0],
       responsibleUser: mockResponsibleUser,
-    };
-    vi.mocked(oauthClientsApi.findAll)
-      .mockResolvedValueOnce([clientWithResponsible])
-      .mockResolvedValueOnce([clientWithResponsible]);
-    vi.mocked(oauthClientsApi.update).mockResolvedValueOnce(clientWithResponsible);
-    vi.mocked(studentsApi.findAll).mockResolvedValueOnce({
-      data: [
-        ...mockStudents,
-        {
-          id: 'student-uuid-2',
-          username: 'asmith',
-          first_name: 'Alice',
-          last_name: 'Smith',
-          email: 'asmith@example.com',
-          account_status: 'active' as const,
-          dni: 99887766,
-          birth_date: '1999-03-15',
-          hasPassword: true,
-          domainRole: { id: 1, name: 'Estudiante' },
-          specialty: { id: 1, name: 'ISI' },
-          createdAt: '2026-01-01T00:00:00Z',
-          updatedAt: '2026-01-01T00:00:00Z',
-        },
-      ],
-      total: 2,
+    });
+    vi.mocked(oauthClientsApi.regenerateSecret).mockResolvedValueOnce({
+      id: 1,
+      clientName: 'Torneito v2',
+      redirectUris: ['http://localhost:4000/callback'],
+      createdAt: '2026-01-10T00:00:00Z',
+      updatedAt: '2026-01-10T00:00:00Z',
+      responsibleUser: mockResponsibleUser,
     });
 
-    const { container } = renderClients();
-    await screen.findByText('Torneito App');
-
-    // Click edit
-    const cardButtons = container.querySelectorAll('.mantine-Card-root')[0].querySelectorAll('button');
-    fireEvent.click(cardButtons[1]);
-
-    // Cambiar responsable en el selector
-    const responsibleInput = await screen.findByPlaceholderText(/Buscar por username o nombre/i);
-    fireEvent.change(responsibleInput, { target: { value: 'asmith' } });
-    const option = await screen.findByRole('option', { name: /asmith/i });
-    fireEvent.click(option);
-
-    const nameInput = screen.getByLabelText(/Nombre de la app/i);
-    fireEvent.submit(nameInput.closest('form')!);
+    await editResponsibleToAlice('Torneito v2');
+    fireEvent.click(await screen.findByRole('button', { name: /Guardar y regenerar secret/i }));
 
     await waitFor(() => {
-      expect(oauthClientsApi.update).toHaveBeenCalledWith(1, { responsibleUserId: 'student-uuid-2' });
+      expect(oauthClientsApi.update).toHaveBeenCalledWith(1, {
+        clientName: 'Torneito v2',
+        responsibleUserId: 'student-uuid-2',
+      });
+      expect(oauthClientsApi.regenerateSecret).toHaveBeenCalledWith(1);
     });
+    expect(vi.mocked(oauthClientsApi.update).mock.invocationCallOrder[0])
+      .toBeLessThan(vi.mocked(oauthClientsApi.regenerateSecret).mock.invocationCallOrder[0]);
+
+    // Termina en el modal que permite enviar las credenciales nuevas
+    expect(await screen.findByRole('button', { name: /Enviar credenciales por email/i })).toBeInTheDocument();
+  });
+
+  it('debería volver al formulario con el error y no regenerar nada si falla el guardado', async () => {
+    vi.mocked(oauthClientsApi.update).mockRejectedValueOnce({
+      response: { data: { message: 'Ya existe una aplicación con ese nombre.' } },
+    });
+
+    await editResponsibleToAlice('Torneito v2');
+    fireEvent.click(await screen.findByRole('button', { name: /Guardar y regenerar secret/i }));
+
+    expect(await screen.findByText('Ya existe una aplicación con ese nombre.')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText(/^Cambiar responsable$/i)).not.toBeInTheDocument();
+    });
+    expect(oauthClientsApi.regenerateSecret).not.toHaveBeenCalled();
   });
 
   it('debería suspender, reactivar, regenerar secret y eliminar un cliente', async () => {
