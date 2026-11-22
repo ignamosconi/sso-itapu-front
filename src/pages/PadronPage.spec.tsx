@@ -14,6 +14,7 @@ vi.mock('@/api/studentsApi', () => ({
     activate: vi.fn(),
     remove: vi.fn(),
     getPasswordLock: vi.fn(),
+    requestEmailChange: vi.fn(),
     resendWelcome: vi.fn(),
   },
 }));
@@ -449,6 +450,207 @@ describe('PadronPage', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
 
     expect(studentsApi.remove).toHaveBeenCalledTimes(1);
+    await act(async () => { finish(); });
+  });
+
+  // ── Cambio de email ─────────────────────────────────────────────────────────
+
+  const studentSuspended: StudentResponse = {
+    ...studentActiveWithPass,
+    id: 'stu-3',
+    username: 's.lopez',
+    first_name: 'Sofía',
+    last_name: 'López',
+    account_status: 'suspended',
+  };
+
+  async function openEmailModal() {
+    fireEvent.click(await screen.findByRole('button', { name: /^Cambiar email$/i }));
+    await screen.findByLabelText(/Nuevo email/i);
+  }
+
+  function fillEmailForm(email: string, password: string) {
+    fireEvent.change(screen.getByLabelText(/Nuevo email/i), { target: { value: email } });
+    fireEvent.change(screen.getByLabelText(/Contraseña del alumno/i), { target: { value: password } });
+  }
+
+  const submitEmailChange = () =>
+    fireEvent.click(screen.getByRole('button', { name: /Enviar link de confirmación/i }));
+
+  it('debería mostrar el lápiz solo en alumnos activos (no en suspendidos ni pendientes)', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({
+      data: [studentPendingNoPass, studentSuspended],
+      total: 2,
+    });
+    renderPadron();
+    await screen.findByText('m.gomez');
+    expect(screen.queryByRole('button', { name: /^Cambiar email$/i })).not.toBeInTheDocument();
+
+    vi.mocked(studentsApi.findAll).mockResolvedValue({
+      data: [studentPendingNoPass, studentActiveWithPass, studentSuspended],
+      total: 3,
+    });
+    fireEvent.change(screen.getByPlaceholderText(/Usuario, nombre o DNI/i), { target: { value: 'j' } });
+
+    await screen.findByText('j.perez');
+    const buttons = screen.getAllByRole('button', { name: /^Cambiar email$/i });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].closest('tr')).toHaveTextContent('j.perez');
+  });
+
+  it('debería pedir el cambio con el email nuevo y la contraseña, y avisar a dónde se envió el link', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.requestEmailChange).mockResolvedValue(undefined);
+
+    renderPadron();
+    await screen.findByText('j.perez');
+    await openEmailModal();
+
+    // Muestra el email actual enmascarado
+    expect(screen.getByText('ju********@frvm.utn.edu.ar')).toBeInTheDocument();
+
+    fillEmailForm('  nuevo.mail@gmail.com ', 'ClaveAlumno123');
+    submitEmailChange();
+
+    await waitFor(() =>
+      expect(studentsApi.requestEmailChange).toHaveBeenCalledWith('stu-1', {
+        password: 'ClaveAlumno123',
+        newEmail: 'nuevo.mail@gmail.com',
+      }),
+    );
+    expect(await screen.findByText('nu********@gmail.com')).toBeInTheDocument();
+    expect(screen.getByText(/hasta 15 minutos/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Contraseña del alumno/i)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['un email inválido', 'no-es-un-email', 'ClaveAlumno123', /Ingresá un email válido/i],
+    ['el mismo email (sin importar mayúsculas)', 'JUAN.PEREZ@frvm.utn.edu.ar', 'ClaveAlumno123', /igual al actual/i],
+    ['sin contraseña', 'nuevo@gmail.com', '', /Ingresá la contraseña del alumno/i],
+  ])('debería validar antes de enviar: %s', async (_label, email, password, message) => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+
+    renderPadron();
+    await screen.findByText('j.perez');
+    await openEmailModal();
+    fillEmailForm(email, password);
+    submitEmailChange();
+
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(studentsApi.requestEmailChange).not.toHaveBeenCalled();
+  });
+
+  it('debería informar cuántos intentos quedan si la contraseña es incorrecta (y no cerrar el modal)', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.requestEmailChange)
+      .mockRejectedValueOnce(wrongPassword(4))
+      .mockRejectedValueOnce(wrongPassword(1));
+
+    renderPadron();
+    await screen.findByText('j.perez');
+    await openEmailModal();
+    fillEmailForm('nuevo@gmail.com', 'mala');
+
+    submitEmailChange();
+    expect(await screen.findByText(/Te quedan 4 intentos/i)).toBeInTheDocument();
+
+    submitEmailChange();
+    expect(await screen.findByText(/Te queda 1 intento\./i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nuevo email/i)).toBeInTheDocument();
+  });
+
+  it('debería mostrar el cooldown en el mismo momento en que se agota el último intento', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.requestEmailChange).mockRejectedValueOnce(wrongPassword(0, 900));
+
+    renderPadron();
+    await screen.findByText('j.perez');
+    await openEmailModal();
+    fillEmailForm('nuevo@gmail.com', 'mala');
+    submitEmailChange();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/máximo de intentos de contraseña/i);
+    expect(alert).toHaveTextContent(/15 minutos/i);
+    expect(screen.getByRole('button', { name: /Enviar link de confirmación/i })).toBeDisabled();
+  });
+
+  it('debería mostrar el cooldown apenas se abre el modal si el alumno ya está bloqueado', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.getPasswordLock).mockResolvedValue({ locked: true, retryAfterSeconds: 600 });
+
+    renderPadron();
+    await screen.findByText('j.perez');
+    await openEmailModal();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/10 minutos/i);
+    expect(screen.getByRole('button', { name: /Enviar link de confirmación/i })).toBeDisabled();
+    expect(studentsApi.getPasswordLock).toHaveBeenCalledWith('stu-1');
+    expect(studentsApi.requestEmailChange).not.toHaveBeenCalled();
+  });
+
+  it('debería explicar que hay que esperar si el backend responde 429 por demasiados requests', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.requestEmailChange).mockRejectedValueOnce(throttled('30'));
+
+    renderPadron();
+    await screen.findByText('j.perez');
+    await openEmailModal();
+    fillEmailForm('nuevo@gmail.com', 'ClaveAlumno123');
+    submitEmailChange();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/peticiones demasiado rápido/i);
+    expect(alert).toHaveTextContent(/30 segundos/i);
+  });
+
+  it('debería mostrar el mensaje del servidor si el email ya está registrado (409)', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.requestEmailChange).mockRejectedValueOnce({
+      response: { status: 409, data: { message: 'Ese email ya está registrado por otro usuario.' } },
+    });
+
+    renderPadron();
+    await screen.findByText('j.perez');
+    await openEmailModal();
+    fillEmailForm('otro@gmail.com', 'ClaveAlumno123');
+    submitEmailChange();
+
+    expect(await screen.findByText(/Ese email ya está registrado por otro usuario/i)).toBeInTheDocument();
+  });
+
+  it('debería unir los mensajes de validación cuando el servidor devuelve una lista', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.requestEmailChange).mockRejectedValueOnce({
+      response: { status: 400, data: { message: ['newEmail must be an email', 'password should not be empty'] } },
+    });
+
+    renderPadron();
+    await screen.findByText('j.perez');
+    await openEmailModal();
+    fillEmailForm('nuevo@gmail.com', 'x');
+    submitEmailChange();
+
+    expect(await screen.findByText(/newEmail must be an email password should not be empty/i)).toBeInTheDocument();
+  });
+
+  it('no debería enviar el pedido dos veces si se aprieta Enter mientras el primero sigue en curso', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    let finish!: () => void;
+    vi.mocked(studentsApi.requestEmailChange).mockReturnValue(new Promise<void>(r => { finish = r; }));
+
+    renderPadron();
+    await screen.findByText('j.perez');
+    await openEmailModal();
+    fillEmailForm('nuevo@gmail.com', 'ClaveAlumno123');
+
+    const input = screen.getByLabelText(/Contraseña del alumno/i);
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(studentsApi.requestEmailChange).toHaveBeenCalledTimes(1);
     await act(async () => { finish(); });
   });
 });

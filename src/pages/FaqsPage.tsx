@@ -263,7 +263,40 @@ export function FaqsPage() {
                   Hacé click en el ícono de sobre azul en la columna de acciones para reenviar el email
                   de bienvenida. El modal muestra el email censurado al que se enviará.
                 </List.Item>
-                <List.Item>Si el email está mal cargado, editá al usuario (ícono de lápiz) para corregirlo antes de reenviar.</List.Item>
+                <List.Item>
+                  Si el email está mal cargado y la cuenta sigue <strong>pendiente</strong>, no se puede editar:
+                  dá de baja al usuario (no pide contraseña) y volvé a cargarlo con el email correcto.
+                </List.Item>
+              </List>
+            </Accordion.Panel>
+          </Accordion.Item>
+
+          <Accordion.Item value="cambiar-email">
+            <Accordion.Control icon={<IconShieldCheck size={16} />}>
+              Un alumno necesita cambiar su email. ¿Cómo lo hago?
+            </Accordion.Control>
+            <Accordion.Panel>
+              <List size="sm" spacing="xs">
+                <List.Item>
+                  Solo se puede en usuarios <strong>activos</strong>. Andá a <strong>Usuarios → Padrón</strong> y
+                  hacé click en el ícono de lápiz de su fila. Si está suspendido, reactivalo primero.
+                </List.Item>
+                <List.Item>
+                  El alumno tiene que estar presente: se pide su <strong>contraseña</strong> y el <strong>email nuevo</strong>.
+                  Comparte con la baja el límite de intentos de contraseña.
+                </List.Item>
+                <List.Item>
+                  Se envía un link de confirmación al <strong>email nuevo</strong> (vence a la hora por defecto) y un aviso
+                  al email actual. El cambio se aplica recién cuando el alumno confirma desde ese link.
+                </List.Item>
+                <List.Item>
+                  Al confirmar se <strong>cierran todas sus sesiones</strong> y se invalidan sus links de restaurar
+                  contraseña pendientes. Las apps pueden seguir mostrando el email anterior hasta 15 minutos
+                  (lo que dura un access token).
+                </List.Item>
+                <List.Item>
+                  El identificador <Code>sub</Code> no cambia, así que las apps no pierden al usuario.
+                </List.Item>
               </List>
             </Accordion.Panel>
           </Accordion.Item>

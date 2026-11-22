@@ -3,7 +3,7 @@ import {
   StudentResponse, CreateStudentPayload, UpdateStudentPayload,
   DeleteStudentPayload, StudentFilters, PaginatedStudentsResponse,
   ImportPreviewResult, ImportConfirmPayload, ImportConfirmResult,
-  PasswordLockStatus,
+  PasswordLockStatus, RequestEmailChangePayload,
 } from '@/types/api.types';
 
 export const studentsApi = {
@@ -29,6 +29,9 @@ export const studentsApi = {
   getPasswordLock: async (id: string): Promise<PasswordLockStatus> => {
     const { data } = await apiClient.get<PasswordLockStatus>(`/admin/students/${id}/password-lock`);
     return data;
+  },
+  requestEmailChange: async (id: string, payload: RequestEmailChangePayload): Promise<void> => {
+    await apiClient.post(`/admin/students/${id}/email-change`, payload);
   },
   suspend: async (id: string): Promise<StudentResponse> => {
     const { data } = await apiClient.patch<StudentResponse>(`/admin/students/${id}/suspend`);

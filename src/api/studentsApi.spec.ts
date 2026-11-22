@@ -27,6 +27,17 @@ describe('studentsApi', () => {
     expect(res).toEqual(mockRes);
   });
 
+  it('requestEmailChange debería hacer POST a /admin/students/:id/email-change', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({});
+
+    await studentsApi.requestEmailChange('u1', { password: 'x', newEmail: 'nuevo@gmail.com' });
+
+    expect(apiClient.post).toHaveBeenCalledWith('/admin/students/u1/email-change', {
+      password: 'x',
+      newEmail: 'nuevo@gmail.com',
+    });
+  });
+
   it('findOne debería consultar /admin/students/:id', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: { id: 'u1' } });
     const res = await studentsApi.findOne('u1');

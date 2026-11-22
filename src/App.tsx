@@ -12,6 +12,7 @@ import { CargarUsuariosPage } from '@/pages/CargarUsuariosPage';
 import { RolesPage } from '@/pages/RolesPage';
 import { EspecialidadesPage } from '@/pages/EspecialidadesPage';
 import { SetPasswordPage } from '@/pages/SetPasswordPage';
+import { ConfirmEmailChangePage } from '@/pages/ConfirmEmailChangePage';
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/set-password" element={<SetPasswordPage />} />
+        <Route path="/confirm-email" element={<ConfirmEmailChangePage />} />
         <Route
           path="/"
           element={

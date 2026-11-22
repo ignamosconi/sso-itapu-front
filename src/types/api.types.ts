@@ -140,6 +140,12 @@ export interface DeleteStudentPayload {
   password?: string;
 }
 
+// Pedido de cambio de email de un alumno activo (el link de confirmación va al email nuevo)
+export interface RequestEmailChangePayload {
+  password: string;
+  newEmail: string;
+}
+
 // Estado del bloqueo por intentos de contraseña de un alumno (baja del padrón)
 export interface PasswordLockStatus {
   locked: boolean;

@@ -7,7 +7,7 @@ import {
 } from '@mantine/core';
 import {
   IconSearch, IconAlertCircle, IconPlayerPause,
-  IconPlayerPlay, IconTrash, IconMail, IconClockPause,
+  IconPlayerPlay, IconTrash, IconMail, IconClockPause, IconPencil, IconCheck,
 } from '@tabler/icons-react';
 import { studentsApi } from '@/api/studentsApi';
 import { rolesApi } from '@/api/rolesApi';
@@ -70,6 +70,17 @@ export function PadronPage() {
   // Mientras se consulta si el alumno ya está bloqueado, no se deja intentar la baja.
   const [lockChecking, setLockChecking] = useState(false);
   const lockCheckId = useRef(0);
+
+
+  // Modal cambiar email (comparte con la baja la espera, el bloqueo y la consulta de bloqueo)
+  const [emailModal, setEmailModal] = useState(false);
+  const [emailModalKey, setEmailModalKey] = useState(0);
+  const [emailTarget, setEmailTarget] = useState<StudentResponse | null>(null);
+  const [emailValue, setEmailValue] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailSentTo, setEmailSentTo] = useState<string | null>(null);
 
   const maskEmail = (email: string): string => {
     const [local, domain] = email.split('@');
@@ -174,11 +185,8 @@ export function PadronPage() {
     setRateLimit({ kind, until: t + seconds * 1000 });
   };
 
-  const openDelete = (s: StudentResponse) => {
-    setDeleteTarget(s); setDeletePassword(''); setDeleteError(null); setRateLimit(null);
-    setDeleteModalKey(k => k + 1); setDeleteModal(true);
-
-    // Si el alumno ya está en cooldown se muestra al abrir el modal, sin gastar un intento para descubrirlo.
+  // Consulta si el alumno ya está en cooldown, sin gastar un intento para descubrirlo.
+  const checkLock = (s: StudentResponse) => {
     const checkId = ++lockCheckId.current;
     if (!s.hasPassword) { setLockChecking(false); return; }
     setLockChecking(true);
@@ -193,6 +201,34 @@ export function PadronPage() {
       .finally(() => { if (checkId === lockCheckId.current) setLockChecking(false); });
   };
 
+  // Errores comunes a la baja y al cambio de email: espera por demasiados requests (429),
+  // alumno bloqueado (429) o contraseña incorrecta (403). Devuelve true si ya se lo mostró al usuario.
+  const handleAttemptError = (err: unknown, showMessage: (message: string) => void): boolean => {
+    const rl = getRateLimitInfo(err);
+    if (rl) {
+      startCooldown(rl.kind, rl.seconds);
+      return true;
+    }
+    const wrongPassword = getPasswordAttemptsInfo(err);
+    if (!wrongPassword) return false;
+    if (wrongPassword.attemptsRemaining === 0) {
+      // Era el último intento: el cooldown aparece ya, sin esperar a un intento más.
+      startCooldown('locked', wrongPassword.retryAfterSeconds);
+    } else {
+      const n = wrongPassword.attemptsRemaining;
+      showMessage(
+        `La contraseña ingresada es incorrecta. Te ${n === 1 ? 'queda 1 intento' : `quedan ${n} intentos`}.`,
+      );
+    }
+    return true;
+  };
+
+  const openDelete = (s: StudentResponse) => {
+    setDeleteTarget(s); setDeletePassword(''); setDeleteError(null); setRateLimit(null);
+    setDeleteModalKey(k => k + 1); setDeleteModal(true);
+    checkLock(s);
+  };
+
   const handleDelete = async () => {
     // Se ignora el envío si ya hay uno en curso (Enter + clic) o si hay una espera vigente.
     if (!deleteTarget || deleteLoading || lockChecking || waitSeconds > 0) return;
@@ -202,30 +238,61 @@ export function PadronPage() {
       setDeleteModal(false);
       await load(true);
     } catch (err) {
-      const rl = getRateLimitInfo(err);
-      const wrongPassword = getPasswordAttemptsInfo(err);
-      const ax = err as { response?: { status?: number; data?: { message?: string; responsibleApps?: ResponsibleApp[] } } };
-      if (rl) {
-        startCooldown(rl.kind, rl.seconds);
-      } else if (wrongPassword?.attemptsRemaining === 0) {
-        // Era el último intento: el cooldown aparece ya, sin esperar a un intento más.
-        startCooldown('locked', wrongPassword.retryAfterSeconds);
-      } else if (wrongPassword) {
-        const n = wrongPassword.attemptsRemaining;
-        setDeleteError(
-          `La contraseña ingresada es incorrecta. Te ${n === 1 ? 'queda 1 intento' : `quedan ${n} intentos`}.`,
-        );
-      } else if (ax?.response?.status === 409 && ax?.response?.data?.responsibleApps) {
-        // Cerrar modal de baja y abrir modal de conflicto
-        setDeleteModal(false);
-        setConflictStudentName(`${deleteTarget.first_name} ${deleteTarget.last_name}`);
-        setConflictApps(ax.response.data.responsibleApps);
-        setConflictModal(true);
-      } else {
-        setDeleteError(ax?.response?.data?.message ?? 'Error al eliminar.');
+      if (!handleAttemptError(err, setDeleteError)) {
+        const ax = err as { response?: { status?: number; data?: { message?: string; responsibleApps?: ResponsibleApp[] } } };
+        if (ax?.response?.status === 409 && ax?.response?.data?.responsibleApps) {
+          // Cerrar modal de baja y abrir modal de conflicto
+          setDeleteModal(false);
+          setConflictStudentName(`${deleteTarget.first_name} ${deleteTarget.last_name}`);
+          setConflictApps(ax.response.data.responsibleApps);
+          setConflictModal(true);
+        } else {
+          setDeleteError(ax?.response?.data?.message ?? 'Error al eliminar.');
+        }
       }
     } finally { setDeleteLoading(false); }
   };
+
+  const openEmailChange = (s: StudentResponse) => {
+    setEmailTarget(s); setEmailValue(''); setEmailPassword(''); setEmailError(null);
+    setEmailSentTo(null); setRateLimit(null);
+    setEmailModalKey(k => k + 1); setEmailModal(true);
+    checkLock(s);
+  };
+
+  const handleEmailChange = async () => {
+    // Se ignora el envío si ya hay uno en curso (Enter + clic) o si hay una espera vigente.
+    if (!emailTarget || emailLoading || lockChecking || waitSeconds > 0) return;
+    const newEmail = emailValue.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { setEmailError('Ingresá un email válido.'); return; }
+    if (newEmail.toLowerCase() === emailTarget.email.toLowerCase()) {
+      setEmailError('El nuevo email es igual al actual.'); return;
+    }
+    if (!emailPassword) { setEmailError('Ingresá la contraseña del alumno.'); return; }
+
+    setEmailLoading(true); setEmailError(null);
+    try {
+      await studentsApi.requestEmailChange(emailTarget.id, { password: emailPassword, newEmail });
+      setEmailPassword('');
+      setEmailSentTo(newEmail);
+    } catch (err) {
+      if (!handleAttemptError(err, setEmailError)) {
+        const ax = err as { response?: { data?: { message?: string | string[] } } };
+        const msg = ax?.response?.data?.message;
+        setEmailError(Array.isArray(msg) ? msg.join(' ') : (msg ?? 'Error al solicitar el cambio de email.'));
+      }
+    } finally { setEmailLoading(false); }
+  };
+
+  // Aviso de espera (compartido por los modales de baja y de cambio de email)
+  const cooldownAlert = waitSeconds > 0 && rateLimit && (
+    <Alert icon={<IconClockPause size={16} />} color="orange" mb="sm" role="alert">
+      {rateLimit.kind === 'locked'
+        ? 'Se superó el máximo de intentos de contraseña para este alumno. '
+        : 'Estás haciendo peticiones demasiado rápido. '}
+      Podrás volver a intentarlo en <strong>{formatWait(waitSeconds)}</strong>.
+    </Alert>
+  );
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -368,6 +435,19 @@ export function PadronPage() {
                               <IconTrash size={15} />
                             </ActionIcon>
                           </Tooltip>
+
+                          {s.account_status === 'active' && (
+                            <Tooltip label="Cambiar email">
+                              <ActionIcon
+                                variant="subtle"
+                                color="blue"
+                                aria-label="Cambiar email"
+                                onClick={() => openEmailChange(s)}
+                              >
+                                <IconPencil size={15} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
                         </Flex>
                       </Table.Td>
                     </Table.Tr>
@@ -418,14 +498,7 @@ export function PadronPage() {
           Vas a dar de baja a <strong>{deleteTarget?.first_name} {deleteTarget?.last_name}</strong> ({deleteTarget?.username}).
           Esta acción es irreversible.
         </Text>
-        {waitSeconds > 0 && rateLimit && (
-          <Alert icon={<IconClockPause size={16} />} color="orange" mb="sm" role="alert">
-            {rateLimit.kind === 'locked'
-              ? 'Se superó el máximo de intentos de contraseña para este alumno. '
-              : 'Estás haciendo peticiones demasiado rápido. '}
-            Podrás volver a intentarlo en <strong>{formatWait(waitSeconds)}</strong>.
-          </Alert>
-        )}
+        {cooldownAlert}
         {deleteTarget?.hasPassword ? (
           <>
             <Text size="xs" c="dimmed" mb="sm">
@@ -464,7 +537,73 @@ export function PadronPage() {
           </Button>
         </Group>
       </Modal>
-          {/* ── Modal conflicto: usuario responsable de apps ── */}
+      {/* ── Modal cambiar email ── */}
+      <Modal
+        key={`email-${emailModalKey}`}
+        opened={emailModal}
+        onClose={() => setEmailModal(false)}
+        title="Cambiar email"
+        centered
+      >
+        {emailSentTo ? (
+          <>
+            <Alert icon={<IconCheck size={16} />} color="green" mb="md">
+              Enviamos un link de confirmación a <strong>{maskEmail(emailSentTo)}</strong>.
+            </Alert>
+            <Text size="sm" mb="xs">
+              El cambio se aplica cuando el alumno abra ese link y lo confirme. El link vence a la hora.
+            </Text>
+            <Text size="xs" c="dimmed" mb="lg">
+              Al confirmar se cierran todas sus sesiones y tendrá que volver a iniciar sesión. Las apps pueden
+              seguir mostrando el email anterior hasta 15 minutos. También avisamos al email actual.
+            </Text>
+            <Button fullWidth variant="default" onClick={() => setEmailModal(false)}>Cerrar</Button>
+          </>
+        ) : (
+          <>
+            <Text size="sm" mb="sm">
+              Vas a cambiar el email de <strong>{emailTarget?.first_name} {emailTarget?.last_name}</strong> ({emailTarget?.username}).
+              Email actual: <strong>{emailTarget ? maskEmail(emailTarget.email) : ''}</strong>.
+            </Text>
+            <Text size="xs" c="dimmed" mb="sm">
+              Enviaremos un link de confirmación al email nuevo y un aviso al actual. El alumno debe estar presente
+              para ingresar su contraseña.
+            </Text>
+            {cooldownAlert}
+            {emailError && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="sm">{emailError}</Alert>}
+            <TextInput
+              label="Nuevo email"
+              placeholder="nuevo@email.com"
+              value={emailValue}
+              onChange={e => setEmailValue(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') void handleEmailChange(); }}
+              mb="sm"
+              autoFocus
+            />
+            <PasswordInput
+              label="Contraseña del alumno"
+              placeholder="••••••••"
+              value={emailPassword}
+              onChange={e => setEmailPassword(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') void handleEmailChange(); }}
+              mb="lg"
+            />
+            <Group justify="flex-end" gap="sm">
+              <Button variant="subtle" onClick={() => setEmailModal(false)}>Cancelar</Button>
+              <Button
+                color="blue"
+                loading={emailLoading}
+                disabled={waitSeconds > 0 || lockChecking}
+                onClick={() => void handleEmailChange()}
+              >
+                Enviar link de confirmación
+              </Button>
+            </Group>
+          </>
+        )}
+      </Modal>
+
+      {/* ── Modal conflicto: usuario responsable de apps ── */}
       <Modal
         opened={conflictModal}
         onClose={() => setConflictModal(false)}
