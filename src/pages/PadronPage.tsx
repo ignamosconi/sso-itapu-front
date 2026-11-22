@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useDebouncedValue } from '@mantine/hooks';
+import { useEffect, useRef, useState } from 'react';
+import { useDebouncedCallback } from '@mantine/hooks';
 import {
   Box, Title, Text, Table, Group, Badge, TextInput, Select,
   ActionIcon, Loader, Center, Alert, Pagination, Modal,
@@ -20,25 +20,34 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending_registration: { label: 'Pendiente', color: 'yellow' },
 };
 
+interface PadronQuery {
+  search: string;
+  status: string | null;
+  role: string | null;
+  spec: string | null;
+  page: number;
+  pageSize: number;
+}
+
 export function PadronPage() {
   const [students, setStudents] = useState<StudentResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [query, setQuery] = useState<PadronQuery>({
+  search: '', status: null, role: null, spec: null, page: 1, pageSize: 10,
+  });
+  const { page, pageSize } = query;
 
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [roleFilter, setRoleFilter] = useState<string | null>(null);
-  const [specFilter, setSpecFilter] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const PAGE_SIZE_OPTIONS = ['5', '10', '20', '50'];
 
-  const [debouncedSearch] = useDebouncedValue(search, 300);
-  const [debouncedStatus] = useDebouncedValue(statusFilter, 300);
-  const [debouncedRole] = useDebouncedValue(roleFilter, 300);
-  const [debouncedSpec] = useDebouncedValue(specFilter, 300);
+  const [searchText, setSearchText] = useState('');
+  const applySearch = useDebouncedCallback(
+    (text: string) => setQuery(q => ({ ...q, search: text.trim(), page: 1 })),
+    300,
+  );
+
 
   const [roles, setRoles] = useState<DomainRoleResponse[]>([]);
   const [specs, setSpecs] = useState<SpecialtyResponse[]>([]);
@@ -64,25 +73,32 @@ export function PadronPage() {
   const [conflictApps, setConflictApps] = useState<ResponsibleApp[]>([]);
   const [conflictStudentName, setConflictStudentName] = useState('');
 
+  const latestRequest = useRef(0);
+
   const load = async (silent = false) => {
+    const requestId = ++latestRequest.current;
     if (!silent) setLoading(true);
     try {
       const res = await studentsApi.findAll({
-        search: debouncedSearch || undefined,
-        accountStatus: debouncedStatus ?? undefined,
-        domainRoleId: debouncedRole ? parseInt(debouncedRole, 10) : undefined,
-        specialtyId: debouncedSpec ? parseInt(debouncedSpec, 10) : undefined,
-        page,
-        limit: pageSize,
+        search: query.search || undefined,
+        accountStatus: query.status ?? undefined,
+        domainRoleId: query.role ? parseInt(query.role, 10) : undefined,
+        specialtyId: query.spec ? parseInt(query.spec, 10) : undefined,
+        page: query.page,
+        limit: query.pageSize,
       });
+      if (requestId !== latestRequest.current) return;
       setStudents(res.data);
       setTotal(res.total);
-    } catch { setError('Error al cargar el padrón.'); }
-    finally { if (!silent) setLoading(false); }
+    } catch {
+      if (requestId === latestRequest.current) setError('Error al cargar el padrón.');
+    } finally {
+      if (requestId === latestRequest.current) setLoading(false);
+    }
   };
 
   // oxlint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void load(); }, [debouncedSearch, debouncedStatus, debouncedRole, debouncedSpec, page, pageSize]);
+  useEffect(() => { void load(); }, [query]);
   useEffect(() => {
     void rolesApi.findAll().then(setRoles);
     void specialtiesApi.findAll().then(setSpecs);
@@ -173,17 +189,17 @@ export function PadronPage() {
       <Group mb="md" justify="space-between" wrap="wrap" gap="sm">
         <Group wrap="wrap" gap="sm">
           <TextInput
-            placeholder="Buscar..."
+            placeholder="Usuario, nombre o DNI..."
             leftSection={<IconSearch size={14} />}
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
-            w={220}
+            value={searchText}
+            onChange={e => { setSearchText(e.target.value); applySearch(e.target.value); }}
+            w={300}
           />
           <Select
             placeholder="Estado"
             clearable
-            value={statusFilter}
-            onChange={v => { setStatusFilter(v); setPage(1); }}
+            value={query.status}
+            onChange={v => setQuery(q => ({ ...q, status: v, page: 1 }))}
             w={160}
             data={[
               { value: 'active', label: 'Activo' },
@@ -194,16 +210,16 @@ export function PadronPage() {
           <Select
             placeholder="Rol"
             clearable
-            value={roleFilter}
-            onChange={v => { setRoleFilter(v); setPage(1); }}
+            value={query.role}
+            onChange={v => setQuery(q => ({ ...q, role: v, page: 1 }))}
             w={160}
             data={roles.map(r => ({ value: String(r.id), label: r.name }))}
           />
           <Select
             placeholder="Especialidad"
             clearable
-            value={specFilter}
-            onChange={v => { setSpecFilter(v); setPage(1); }}
+            value={query.spec}
+            onChange={v => setQuery(q => ({ ...q, spec: v, page: 1 }))}
             w={160}
             data={specs.map(s => ({ value: String(s.id), label: s.name }))}
           />
@@ -212,8 +228,9 @@ export function PadronPage() {
         <Select
           data={PAGE_SIZE_OPTIONS}
           value={String(pageSize)}
-          onChange={v => { setPageSize(Number(v)); setPage(1); }}
+          onChange={v => setQuery(q => ({ ...q, pageSize: Number(v), page: 1 }))}
           w={100}
+          allowDeselect={false}
         />
       </Group>
 
@@ -305,7 +322,7 @@ export function PadronPage() {
             </Table>
           </Box>
           <Group justify="center" mt="md">
-            <Pagination total={totalPages} value={page} onChange={setPage} />
+            <Pagination total={totalPages} value={page} onChange={p => setQuery(q => ({ ...q, page: p }))} />
           </Group>
         </>
       )}
