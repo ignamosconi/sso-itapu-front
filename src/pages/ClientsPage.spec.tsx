@@ -35,7 +35,7 @@ vi.mock('@mantine/core', async (importOriginal) => {
       R.createElement('input', {
         placeholder,
         value: search,
-        onChange: (e: any) => { setSearch(e.target.value); setOpen(true); },
+        onChange: (e: any) => { setSearch(e.target.value); setOpen(true); props.onSearchChange?.(e.target.value); },
         onFocus:  ()      => setOpen(true),
       }),
       open
@@ -45,7 +45,7 @@ vi.mock('@mantine/core', async (importOriginal) => {
               role: 'option',
               'aria-selected': value === i.value ? 'true' : 'false',
               onMouseDown: (e: any) => e.preventDefault(),
-              onClick: () => { onChange?.(i.value); setSearch(i.label); setOpen(false); },
+              onClick: () => { onChange?.(i.value); setSearch(i.label); setOpen(false); props.onSearchChange?.(i.label); },
             }, i.label),
           )
         : null,
@@ -99,6 +99,16 @@ const mockStudents = [
   },
 ];
 
+const mockStudentAlice = {
+  ...mockStudents[0],
+  id: 'student-uuid-2',
+  username: 'asmith',
+  first_name: 'Alice',
+  last_name: 'Smith',
+  email: 'asmith@example.com',
+  dni: 99887766,
+};
+
 const mockClients: OAuthClientResponse[] = [
   {
     id: 1,
@@ -145,14 +155,104 @@ describe('ClientsPage', () => {
     fireEvent.click(firstCardButtons[firstCardButtons.length - 1]);
     expect(await screen.findByText('http://localhost:4000/callback')).toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre/i), { target: { value: 'Autogestión' } });
+    // Un solo buscador para nombre, ID y URI
+    const searchInput = screen.getByPlaceholderText(/Buscar por nombre, ID o URI/i);
+
+    fireEvent.change(searchInput, { target: { value: 'Autogestión' } });
     expect(screen.queryByText('Torneito App')).not.toBeInTheDocument();
     expect(screen.getByText('Autogestión FRVM')).toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre/i), { target: { value: '' } });
-    fireEvent.change(screen.getByPlaceholderText(/Buscar por URI/i), { target: { value: 'localhost:4000' } });
+    fireEvent.change(searchInput, { target: { value: '' } });
+    fireEvent.change(searchInput, { target: { value: 'localhost:4000' } });
     expect(screen.getByText('Torneito App')).toBeInTheDocument();
     expect(screen.queryByText('Autogestión FRVM')).not.toBeInTheDocument();
+  });
+
+  it('debería buscar sin importar tildes ni mayúsculas, y también por ID', async () => {
+    vi.mocked(oauthClientsApi.findAll).mockResolvedValueOnce(mockClients);
+
+    renderClients();
+    await screen.findByText('Torneito App');
+    const searchInput = screen.getByPlaceholderText(/Buscar por nombre, ID o URI/i);
+
+    // sin tilde encuentra "Autogestión"
+    fireEvent.change(searchInput, { target: { value: 'AUTOGESTION' } });
+    expect(screen.queryByText('Torneito App')).not.toBeInTheDocument();
+    expect(screen.getByText('Autogestión FRVM')).toBeInTheDocument();
+
+    // por ID (el 2 es de Autogestión)
+    fireEvent.change(searchInput, { target: { value: '2' } });
+    expect(screen.queryByText('Torneito App')).not.toBeInTheDocument();
+    expect(screen.getByText('Autogestión FRVM')).toBeInTheDocument();
+  });
+
+  it('debería buscar al usuario responsable en el servidor (con debounce) y no solo entre los primeros resultados', async () => {
+    vi.mocked(oauthClientsApi.findAll).mockResolvedValueOnce([]);
+    vi.mocked(studentsApi.findAll)
+      .mockResolvedValueOnce({ data: mockStudents, total: 150 })
+      .mockResolvedValueOnce({ data: [mockStudentAlice], total: 1 });
+
+    renderClients();
+    fireEvent.click(await screen.findByRole('button', { name: /Nuevo cliente/i }));
+
+    // Al abrir el modal: primeros 20 usuarios activos, sin texto de búsqueda
+    await waitFor(() => {
+      expect(studentsApi.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ accountStatus: 'active', limit: 20 }),
+      );
+    });
+
+    fireEvent.change(await screen.findByPlaceholderText(/Buscar por username o nombre/i), {
+      target: { value: 'asmith' },
+    });
+
+    await waitFor(() => {
+      expect(studentsApi.findAll).toHaveBeenLastCalledWith(
+        expect.objectContaining({ accountStatus: 'active', search: 'asmith', limit: 20 }),
+      );
+    });
+    expect(await screen.findByRole('option', { name: /asmith/i })).toBeInTheDocument();
+  });
+
+  it('no debería buscar en el servidor la etiqueta que Mantine escribe al elegir una opción', async () => {
+    vi.mocked(oauthClientsApi.findAll).mockResolvedValueOnce([]);
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: mockStudents, total: 1 });
+
+    renderClients();
+    fireEvent.click(await screen.findByRole('button', { name: /Nuevo cliente/i }));
+
+    fireEvent.change(await screen.findByPlaceholderText(/Buscar por username o nombre/i), {
+      target: { value: 'jdoe' },
+    });
+    await waitFor(() => {
+      expect(studentsApi.findAll).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'jdoe' }));
+    });
+
+    fireEvent.click(await screen.findByRole('option', { name: /jdoe/i }));
+    await new Promise(resolve => setTimeout(resolve, 450));
+
+    expect(studentsApi.findAll).not.toHaveBeenCalledWith(
+      expect.objectContaining({ search: 'jdoe — John Doe' }),
+    );
+  });
+
+  it('debería conservar al responsable actual en el selector aunque la búsqueda no lo devuelva', async () => {
+    const clientWithResponsible: OAuthClientResponse = {
+      ...mockClients[0],
+      responsibleUser: mockResponsibleUser,
+    };
+    vi.mocked(oauthClientsApi.findAll).mockResolvedValueOnce([clientWithResponsible]);
+    // La lista del servidor trae a otra persona: el responsable actual (jdoe) no está en ella
+    vi.mocked(studentsApi.findAll).mockResolvedValueOnce({ data: [mockStudentAlice], total: 1 });
+
+    const { container } = renderClients();
+    await screen.findByText('Torneito App');
+    fireEvent.click(container.querySelectorAll('.mantine-Card-root')[0].querySelectorAll('button')[1]);
+
+    fireEvent.focus(await screen.findByPlaceholderText(/Buscar por username o nombre/i));
+
+    expect(await screen.findByRole('option', { name: /asmith/i })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /jdoe/i })).toBeInTheDocument();
   });
 
   it('debería crear un cliente nuevo y enviar las credenciales por email', async () => {

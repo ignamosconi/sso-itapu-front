@@ -89,7 +89,7 @@ describe('PadronPage', () => {
     expect(screen.getByText('m.gomez')).toBeInTheDocument();
     expect(screen.getByText(/Total: 2/i)).toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText(/Buscar\.\.\./i), { target: { value: 'Pérez' } });
+    fireEvent.change(screen.getByPlaceholderText(/Usuario, nombre o DNI/i), { target: { value: 'Pérez' } });
 
     await waitFor(() => {
       expect(studentsApi.findAll).toHaveBeenLastCalledWith(
