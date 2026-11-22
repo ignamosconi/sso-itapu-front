@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
 import { ClientsPage } from './ClientsPage';
 import { oauthClientsApi } from '@/api/adminApi';
 import { studentsApi } from '@/api/studentsApi';
 import { OAuthClientResponse } from '@/types/api.types';
+const { firstOnChangeSpy } = vi.hoisted(() => ({ firstOnChangeSpy: vi.fn() }));
 // ── Mock: Select searchable ───────────────────────────────────────────
 // Mantine v7 Combobox usa Transition + Popover internamente.
 // En jsdom `transitionend` nunca se dispara, así que el dropdown del
@@ -23,6 +24,9 @@ vi.mock('@mantine/core', async (importOriginal) => {
     );
     const [search, setSearch] = R.useState('');
     const [open, setOpen]     = R.useState(false);
+    R.useEffect(() => {
+      if (searchable) firstOnChangeSpy(!!props.selectFirstOptionOnChange);
+    }, [searchable, props.selectFirstOptionOnChange]);
 
     if (!searchable) return R.createElement(mod.Select, props);
 
@@ -35,6 +39,7 @@ vi.mock('@mantine/core', async (importOriginal) => {
       R.createElement('input', {
         placeholder,
         value: search,
+        'data-first-on-open': String(!!props.selectFirstOptionOnDropdownOpen),
         onChange: (e: any) => { setSearch(e.target.value); setOpen(true); props.onSearchChange?.(e.target.value); },
         onFocus:  ()      => setOpen(true),
       }),
@@ -138,6 +143,30 @@ function renderClients() {
   );
 }
 
+// Abre la edición del cliente 1 (que ya tiene responsable), opcionalmente le cambia el nombre,
+// elige a "asmith" como nuevo responsable y envía el formulario.
+async function editResponsibleToAlice(newName?: string) {
+  const clientWithResponsible: OAuthClientResponse = {
+    ...mockClients[0],
+    responsibleUser: mockResponsibleUser,
+  };
+  vi.mocked(oauthClientsApi.findAll).mockResolvedValue([clientWithResponsible]);
+  vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [...mockStudents, mockStudentAlice], total: 2 });
+
+  const { container } = renderClients();
+  await screen.findByText('Torneito App');
+  fireEvent.click(container.querySelectorAll('.mantine-Card-root')[0].querySelectorAll('button')[1]);
+
+  if (newName) {
+    fireEvent.change(await screen.findByLabelText(/Nombre de la app/i), { target: { value: newName } });
+  }
+  fireEvent.change(await screen.findByPlaceholderText(/Buscar por username o nombre/i), {
+    target: { value: 'asmith' },
+  });
+  fireEvent.click(await screen.findByRole('option', { name: /asmith/i }));
+  fireEvent.submit(screen.getByLabelText(/Nombre de la app/i).closest('form')!);
+}
+
 describe('ClientsPage', () => {
   beforeEach(() => vi.resetAllMocks());
   afterEach(cleanup);
@@ -229,11 +258,58 @@ describe('ClientsPage', () => {
     });
 
     fireEvent.click(await screen.findByRole('option', { name: /jdoe/i }));
-    await new Promise(resolve => setTimeout(resolve, 450));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 450)); });
 
     expect(studentsApi.findAll).not.toHaveBeenCalledWith(
       expect.objectContaining({ search: 'jdoe — John Doe' }),
     );
+  });
+
+  it('debería resaltar la primera opción del selector al abrir y recién cuando llegan los resultados de una búsqueda', async () => {
+    type StudentsPage = Awaited<ReturnType<typeof studentsApi.findAll>>;
+    let resolveSearch!: (page: StudentsPage) => void;
+    vi.mocked(oauthClientsApi.findAll).mockResolvedValueOnce([]);
+    vi.mocked(studentsApi.findAll)
+      .mockResolvedValueOnce({ data: mockStudents, total: 1 })
+      .mockReturnValueOnce(new Promise<StudentsPage>(resolve => { resolveSearch = resolve; }));
+
+    renderClients();
+    fireEvent.click(await screen.findByRole('button', { name: /Nuevo cliente/i }));
+    const input = await screen.findByPlaceholderText(/Buscar por username o nombre/i);
+
+    // Sin responsable elegido, el cursor aparece apenas se abre el listado
+    expect(input).toHaveAttribute('data-first-on-open', 'true');
+
+    // Esperar a que termine la carga inicial (si el selector ya estaba montado, también dispara el pulso)
+    await waitFor(() => expect(studentsApi.findAll).toHaveBeenCalledTimes(1));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
+    firstOnChangeSpy.mockClear();
+
+    // Mientras la búsqueda está en curso la lista en pantalla es la vieja: no se resalta nada
+    fireEvent.change(input, { target: { value: 'asmith' } });
+    await waitFor(() => expect(studentsApi.findAll).toHaveBeenCalledTimes(2));
+    expect(firstOnChangeSpy).not.toHaveBeenCalledWith(true);
+
+    // Al llegar los resultados el pulso se enciende y se apaga de nuevo
+    await act(async () => { resolveSearch({ data: [mockStudentAlice], total: 1 }); });
+    await waitFor(() => expect(firstOnChangeSpy).toHaveBeenCalledWith(true));
+    await waitFor(() => expect(firstOnChangeSpy).toHaveBeenLastCalledWith(false));
+  });
+
+  it('no debería mover el cursor a la primera opción al abrir si ya hay un responsable elegido', async () => {
+    const clientWithResponsible: OAuthClientResponse = {
+      ...mockClients[0],
+      responsibleUser: mockResponsibleUser,
+    };
+    vi.mocked(oauthClientsApi.findAll).mockResolvedValueOnce([clientWithResponsible]);
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: mockStudents, total: 1 });
+
+    const { container } = renderClients();
+    await screen.findByText('Torneito App');
+    fireEvent.click(container.querySelectorAll('.mantine-Card-root')[0].querySelectorAll('button')[1]);
+
+    const input = await screen.findByPlaceholderText(/Buscar por username o nombre/i);
+    expect(input).toHaveAttribute('data-first-on-open', 'false');
   });
 
   it('debería conservar al responsable actual en el selector aunque la búsqueda no lo devuelva', async () => {
@@ -330,58 +406,72 @@ describe('ClientsPage', () => {
     });
 
     await screen.findByText('Torneito v2');
+
+    // Editar solo el nombre no ofrece regenerar el secret
+    expect(screen.queryByText(/^Cambiar responsable$/i)).not.toBeInTheDocument();
   });
 
-  it('debería editar un cliente cambiando el usuario responsable', async () => {
-    const clientWithResponsible: OAuthClientResponse = {
+  it('debería pedir confirmación al cambiar el responsable y no guardar nada si se cancela', async () => {
+    await editResponsibleToAlice('Torneito v2');
+
+    expect(await screen.findByText(/^Cambiar responsable$/i)).toBeInTheDocument();
+    expect(oauthClientsApi.update).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Cancelar$/i }));
+    await waitFor(() => {
+      expect(screen.queryByText(/^Cambiar responsable$/i)).not.toBeInTheDocument();
+    });
+
+    // Vuelve al formulario con lo que el admin había escrito, sin haber guardado nada
+    expect(screen.getByLabelText(/Nombre de la app/i)).toHaveValue('Torneito v2');
+    expect(oauthClientsApi.update).not.toHaveBeenCalled();
+    expect(oauthClientsApi.regenerateSecret).not.toHaveBeenCalled();
+  });
+
+  it('debería guardar todos los cambios y regenerar el secret al confirmar el cambio de responsable', async () => {
+    vi.mocked(oauthClientsApi.update).mockResolvedValueOnce({
       ...mockClients[0],
       responsibleUser: mockResponsibleUser,
-    };
-    vi.mocked(oauthClientsApi.findAll)
-      .mockResolvedValueOnce([clientWithResponsible])
-      .mockResolvedValueOnce([clientWithResponsible]);
-    vi.mocked(oauthClientsApi.update).mockResolvedValueOnce(clientWithResponsible);
-    vi.mocked(studentsApi.findAll).mockResolvedValueOnce({
-      data: [
-        ...mockStudents,
-        {
-          id: 'student-uuid-2',
-          username: 'asmith',
-          first_name: 'Alice',
-          last_name: 'Smith',
-          email: 'asmith@example.com',
-          account_status: 'active' as const,
-          dni: 99887766,
-          birth_date: '1999-03-15',
-          hasPassword: true,
-          domainRole: { id: 1, name: 'Estudiante' },
-          specialty: { id: 1, name: 'ISI' },
-          createdAt: '2026-01-01T00:00:00Z',
-          updatedAt: '2026-01-01T00:00:00Z',
-        },
-      ],
-      total: 2,
+    });
+    vi.mocked(oauthClientsApi.regenerateSecret).mockResolvedValueOnce({
+      id: 1,
+      clientName: 'Torneito v2',
+      redirectUris: ['http://localhost:4000/callback'],
+      createdAt: '2026-01-10T00:00:00Z',
+      updatedAt: '2026-01-10T00:00:00Z',
+      responsibleUser: mockResponsibleUser,
     });
 
-    const { container } = renderClients();
-    await screen.findByText('Torneito App');
-
-    // Click edit
-    const cardButtons = container.querySelectorAll('.mantine-Card-root')[0].querySelectorAll('button');
-    fireEvent.click(cardButtons[1]);
-
-    // Cambiar responsable en el selector
-    const responsibleInput = await screen.findByPlaceholderText(/Buscar por username o nombre/i);
-    fireEvent.change(responsibleInput, { target: { value: 'asmith' } });
-    const option = await screen.findByRole('option', { name: /asmith/i });
-    fireEvent.click(option);
-
-    const nameInput = screen.getByLabelText(/Nombre de la app/i);
-    fireEvent.submit(nameInput.closest('form')!);
+    await editResponsibleToAlice('Torneito v2');
+    fireEvent.click(await screen.findByRole('button', { name: /Guardar y regenerar secret/i }));
 
     await waitFor(() => {
-      expect(oauthClientsApi.update).toHaveBeenCalledWith(1, { responsibleUserId: 'student-uuid-2' });
+      expect(oauthClientsApi.update).toHaveBeenCalledWith(1, {
+        clientName: 'Torneito v2',
+        responsibleUserId: 'student-uuid-2',
+      });
+      expect(oauthClientsApi.regenerateSecret).toHaveBeenCalledWith(1);
     });
+    expect(vi.mocked(oauthClientsApi.update).mock.invocationCallOrder[0])
+      .toBeLessThan(vi.mocked(oauthClientsApi.regenerateSecret).mock.invocationCallOrder[0]);
+
+    // Termina en el modal que permite enviar las credenciales nuevas
+    expect(await screen.findByRole('button', { name: /Enviar credenciales por email/i })).toBeInTheDocument();
+  });
+
+  it('debería volver al formulario con el error y no regenerar nada si falla el guardado', async () => {
+    vi.mocked(oauthClientsApi.update).mockRejectedValueOnce({
+      response: { data: { message: 'Ya existe una aplicación con ese nombre.' } },
+    });
+
+    await editResponsibleToAlice('Torneito v2');
+    fireEvent.click(await screen.findByRole('button', { name: /Guardar y regenerar secret/i }));
+
+    expect(await screen.findByText('Ya existe una aplicación con ese nombre.')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText(/^Cambiar responsable$/i)).not.toBeInTheDocument();
+    });
+    expect(oauthClientsApi.regenerateSecret).not.toHaveBeenCalled();
   });
 
   it('debería suspender, reactivar, regenerar secret y eliminar un cliente', async () => {
