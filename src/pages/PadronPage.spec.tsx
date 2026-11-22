@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
 import { PadronPage } from './PadronPage';
 import { studentsApi } from '@/api/studentsApi';
@@ -13,6 +13,7 @@ vi.mock('@/api/studentsApi', () => ({
     suspend: vi.fn(),
     activate: vi.fn(),
     remove: vi.fn(),
+    getPasswordLock: vi.fn(),
     resendWelcome: vi.fn(),
   },
 }));
@@ -68,6 +69,7 @@ function renderPadron() {
 describe('PadronPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(studentsApi.getPasswordLock).mockResolvedValue({ locked: false, retryAfterSeconds: 0 });
     vi.mocked(rolesApi.findAll).mockResolvedValue([
       { id: 1, name: 'Alumno', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
     ]);
@@ -235,5 +237,218 @@ describe('PadronPage', () => {
     await waitFor(() => {
       expect(screen.queryByText(/No se puede eliminar este usuario/i)).not.toBeInTheDocument();
     });
+  });
+
+  // ── Límites de intentos / requests (429) ────────────────────────────────────
+  async function openDeleteModalWithPassword(container: HTMLElement) {
+    const rowButtons = container.querySelectorAll('tbody tr')[0].querySelectorAll('button');
+    fireEvent.click(rowButtons[1]); // Dar de baja
+    const passInput = await screen.findByLabelText(/Contraseña del alumno/i);
+    fireEvent.change(passInput, { target: { value: 'ClaveAlumno123' } });
+  }
+
+  const throttled = (seconds: string) => ({
+    response: { status: 429, headers: { 'retry-after': seconds }, data: { message: 'ThrottlerException: Too Many Requests' } },
+  });
+
+  it('debería avisar que hay que esperar y bloquear el botón cuando el backend responde 429 por demasiados requests', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.remove).mockRejectedValue(throttled('30'));
+
+    const { container } = renderPadron();
+    await screen.findByText('j.perez');
+    await openDeleteModalWithPassword(container);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Dar de baja$/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/peticiones demasiado rápido/i);
+    expect(alert).toHaveTextContent(/30 segundos/i);
+    expect(screen.getByRole('button', { name: /^Dar de baja$/i })).toBeDisabled();
+
+    // Mientras dura la espera, ni el botón ni la tecla Enter vuelven a llamar al backend
+    fireEvent.keyDown(screen.getByLabelText(/Contraseña del alumno/i), { key: 'Enter' });
+    expect(studentsApi.remove).toHaveBeenCalledTimes(1);
+  });
+
+  it('debería explicar que el alumno quedó bloqueado por intentos de contraseña y mostrar la espera en minutos', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.remove).mockRejectedValue({
+      response: {
+        status: 429,
+        headers: {},
+        data: { statusCode: 429, code: 'PASSWORD_ATTEMPTS_LOCKED', retryAfterSeconds: 900, message: 'bloqueado' },
+      },
+    });
+
+    const { container } = renderPadron();
+    await screen.findByText('j.perez');
+    await openDeleteModalWithPassword(container);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Dar de baja$/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/máximo de intentos de contraseña/i);
+    expect(alert).toHaveTextContent(/15 minutos/i);
+    expect(screen.getByRole('button', { name: /^Dar de baja$/i })).toBeDisabled();
+  });
+
+  it('debería descontar la espera cada segundo y volver a habilitar el botón al terminar', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.remove).mockRejectedValueOnce(throttled('2'));
+
+    const { container } = renderPadron();
+    await screen.findByText('j.perez');
+    await openDeleteModalWithPassword(container);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Dar de baja$/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/2 segundos/i);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/1 segundo\b/i), { timeout: 3000 });
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument(), { timeout: 4000 });
+    expect(screen.getByRole('button', { name: /^Dar de baja$/i })).toBeEnabled();
+  }, 10000);
+
+  it('no debería arrastrar la espera al abrir el modal de baja de nuevo', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.remove).mockRejectedValueOnce(throttled('60'));
+
+    const { container } = renderPadron();
+    await screen.findByText('j.perez');
+    await openDeleteModalWithPassword(container);
+    fireEvent.click(screen.getByRole('button', { name: /^Dar de baja$/i }));
+    await screen.findByRole('alert');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Cancelar$/i }));
+    await waitFor(() => expect(screen.queryByLabelText(/Contraseña del alumno/i)).not.toBeInTheDocument());
+
+    const rowButtons = container.querySelectorAll('tbody tr')[0].querySelectorAll('button');
+    fireEvent.click(rowButtons[1]);
+    await screen.findByLabelText(/Contraseña del alumno/i);
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Dar de baja$/i })).toBeEnabled();
+  });
+
+  // ── Cooldown inmediato e intentos restantes ─────────────────────────────────
+
+  const wrongPassword = (attemptsRemaining: number, retryAfterSeconds = 900) => ({
+    response: {
+      status: 403,
+      data: { statusCode: 403, message: 'La contraseña ingresada es incorrecta.', attemptsRemaining, retryAfterSeconds },
+    },
+  });
+
+  it('debería mostrar el cooldown apenas se abre el modal si el alumno ya está bloqueado, sin intentar la baja', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.getPasswordLock).mockResolvedValue({ locked: true, retryAfterSeconds: 600 });
+
+    const { container } = renderPadron();
+    await screen.findByText('j.perez');
+
+    const rowButtons = container.querySelectorAll('tbody tr')[0].querySelectorAll('button');
+    fireEvent.click(rowButtons[1]);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/máximo de intentos de contraseña/i);
+    expect(alert).toHaveTextContent(/10 minutos/i);
+    expect(screen.getByRole('button', { name: /^Dar de baja$/i })).toBeDisabled();
+    expect(studentsApi.getPasswordLock).toHaveBeenCalledWith('stu-1');
+    expect(studentsApi.remove).not.toHaveBeenCalled();
+  });
+
+  it('no debería mostrar cooldown ni consultar el bloqueo si el alumno no tiene contraseña', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentPendingNoPass], total: 1 });
+
+    const { container } = renderPadron();
+    await screen.findByText('m.gomez');
+
+    const rowButtons = container.querySelectorAll('tbody tr')[0].querySelectorAll('button');
+    fireEvent.click(rowButtons[2]); // Dar de baja
+
+    await screen.findByText(/Esta cuenta no tiene contraseña configurada/i);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(studentsApi.getPasswordLock).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /^Dar de baja$/i })).toBeEnabled();
+  });
+
+  it('debería mantener el botón deshabilitado mientras se consulta el bloqueo', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    let resolveLock!: (v: { locked: boolean; retryAfterSeconds: number }) => void;
+    vi.mocked(studentsApi.getPasswordLock).mockReturnValue(new Promise(r => { resolveLock = r; }));
+
+    const { container } = renderPadron();
+    await screen.findByText('j.perez');
+    fireEvent.click(container.querySelectorAll('tbody tr')[0].querySelectorAll('button')[1]);
+
+    await screen.findByLabelText(/Contraseña del alumno/i);
+    expect(screen.getByRole('button', { name: /^Dar de baja$/i })).toBeDisabled();
+
+    await act(async () => { resolveLock({ locked: false, retryAfterSeconds: 0 }); });
+    expect(screen.getByRole('button', { name: /^Dar de baja$/i })).toBeEnabled();
+  });
+
+  it('debería seguir permitiendo intentar si falla la consulta del bloqueo', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.getPasswordLock).mockRejectedValue(new Error('red'));
+
+    const { container } = renderPadron();
+    await screen.findByText('j.perez');
+    fireEvent.click(container.querySelectorAll('tbody tr')[0].querySelectorAll('button')[1]);
+
+    await screen.findByLabelText(/Contraseña del alumno/i);
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Dar de baja$/i })).toBeEnabled());
+  });
+
+  it('debería informar cuántos intentos quedan después de una contraseña incorrecta', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.remove)
+      .mockRejectedValueOnce(wrongPassword(4))
+      .mockRejectedValueOnce(wrongPassword(1));
+
+    const { container } = renderPadron();
+    await screen.findByText('j.perez');
+    await openDeleteModalWithPassword(container);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Dar de baja$/i }));
+    expect(await screen.findByText(/Te quedan 4 intentos/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Dar de baja$/i }));
+    expect(await screen.findByText(/Te queda 1 intento\./i)).toBeInTheDocument();
+  });
+
+  it('debería mostrar el cooldown en el mismo momento en que se agota el último intento', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    vi.mocked(studentsApi.remove).mockRejectedValueOnce(wrongPassword(0, 900));
+
+    const { container } = renderPadron();
+    await screen.findByText('j.perez');
+    await openDeleteModalWithPassword(container);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Dar de baja$/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/máximo de intentos de contraseña/i);
+    expect(alert).toHaveTextContent(/15 minutos/i);
+    expect(screen.getByRole('button', { name: /^Dar de baja$/i })).toBeDisabled();
+    expect(studentsApi.remove).toHaveBeenCalledTimes(1);
+  });
+
+  it('no debería enviar la baja dos veces si se aprieta Enter mientras la primera sigue en curso', async () => {
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+    let finish!: () => void;
+    vi.mocked(studentsApi.remove).mockReturnValue(new Promise<void>(r => { finish = r; }));
+
+    const { container } = renderPadron();
+    await screen.findByText('j.perez');
+    await openDeleteModalWithPassword(container);
+
+    const input = screen.getByLabelText(/Contraseña del alumno/i);
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(studentsApi.remove).toHaveBeenCalledTimes(1);
+    await act(async () => { finish(); });
   });
 });

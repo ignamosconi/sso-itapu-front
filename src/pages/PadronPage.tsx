@@ -7,12 +7,13 @@ import {
 } from '@mantine/core';
 import {
   IconSearch, IconAlertCircle, IconPlayerPause,
-  IconPlayerPlay, IconTrash, IconMail,
+  IconPlayerPlay, IconTrash, IconMail, IconClockPause,
 } from '@tabler/icons-react';
 import { studentsApi } from '@/api/studentsApi';
 import { rolesApi } from '@/api/rolesApi';
 import { specialtiesApi } from '@/api/specialtiesApi';
 import { StudentResponse, DomainRoleResponse, SpecialtyResponse, ResponsibleApp } from '@/types/api.types';
+import { getRateLimitInfo, getPasswordAttemptsInfo, formatWait, RateLimitKind } from '@/utils/rateLimit';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   active: { label: 'Activo', color: 'green' },
@@ -62,6 +63,14 @@ export function PadronPage() {
   const [resendTarget, setResendTarget] = useState<StudentResponse | null>(null);
   const [resendConfirmLoading, setResendConfirmLoading] = useState(false);
 
+  // Espera forzada por el backend (429): demasiados requests o demasiados intentos de contraseña.
+  const [rateLimit, setRateLimit] = useState<{ kind: RateLimitKind; until: number } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Mientras se consulta si el alumno ya está bloqueado, no se deja intentar la baja.
+  const [lockChecking, setLockChecking] = useState(false);
+  const lockCheckId = useRef(0);
+
   const maskEmail = (email: string): string => {
     const [local, domain] = email.split('@');
     return `${local.slice(0, 2)}${'*'.repeat(Math.max(1, local.length - 2))}@${domain}`;
@@ -103,6 +112,19 @@ export function PadronPage() {
     void rolesApi.findAll().then(setRoles);
     void specialtiesApi.findAll().then(setSpecs);
   }, []);
+
+  // Cuenta regresiva de la espera: actualiza `now` cada segundo y limpia el bloqueo al llegar a 0.
+  useEffect(() => {
+    if (!rateLimit) return;
+    const id = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= rateLimit.until) setRateLimit(null);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [rateLimit]);
+
+  const waitSeconds = rateLimit ? Math.max(0, Math.ceil((rateLimit.until - now) / 1000)) : 0;
 
   const handleResendWelcome = async () => {
     if (!resendTarget) return;
@@ -146,21 +168,54 @@ export function PadronPage() {
     }
   };
 
+  const startCooldown = (kind: RateLimitKind, seconds: number) => {
+    const t = Date.now();
+    setNow(t);
+    setRateLimit({ kind, until: t + seconds * 1000 });
+  };
+
   const openDelete = (s: StudentResponse) => {
-    setDeleteTarget(s); setDeletePassword(''); setDeleteError(null);
+    setDeleteTarget(s); setDeletePassword(''); setDeleteError(null); setRateLimit(null);
     setDeleteModalKey(k => k + 1); setDeleteModal(true);
+
+    // Si el alumno ya está en cooldown se muestra al abrir el modal, sin gastar un intento para descubrirlo.
+    const checkId = ++lockCheckId.current;
+    if (!s.hasPassword) { setLockChecking(false); return; }
+    setLockChecking(true);
+    studentsApi.getPasswordLock(s.id)
+      .then(status => {
+        if (checkId === lockCheckId.current && status.locked) {
+          startCooldown('locked', status.retryAfterSeconds);
+        }
+      })
+      // Si la consulta falla no pasa nada grave: el servidor igual bloquea el intento.
+      .catch(() => undefined)
+      .finally(() => { if (checkId === lockCheckId.current) setLockChecking(false); });
   };
 
   const handleDelete = async () => {
-    if (!deleteTarget) return;
+    // Se ignora el envío si ya hay uno en curso (Enter + clic) o si hay una espera vigente.
+    if (!deleteTarget || deleteLoading || lockChecking || waitSeconds > 0) return;
     setDeleteLoading(true); setDeleteError(null);
     try {
       await studentsApi.remove(deleteTarget.id, { password: deletePassword || undefined });
       setDeleteModal(false);
       await load(true);
     } catch (err) {
+      const rl = getRateLimitInfo(err);
+      const wrongPassword = getPasswordAttemptsInfo(err);
       const ax = err as { response?: { status?: number; data?: { message?: string; responsibleApps?: ResponsibleApp[] } } };
-      if (ax?.response?.status === 409 && ax?.response?.data?.responsibleApps) {
+      if (rl) {
+        startCooldown(rl.kind, rl.seconds);
+      } else if (wrongPassword?.attemptsRemaining === 0) {
+        // Era el último intento: el cooldown aparece ya, sin esperar a un intento más.
+        startCooldown('locked', wrongPassword.retryAfterSeconds);
+      } else if (wrongPassword) {
+        const n = wrongPassword.attemptsRemaining;
+        setDeleteError(
+          `La contraseña ingresada es incorrecta. Te ${n === 1 ? 'queda 1 intento' : `quedan ${n} intentos`}.`,
+        );
+      } else if (ax?.response?.status === 409 && ax?.response?.data?.responsibleApps) {
         // Cerrar modal de baja y abrir modal de conflicto
         setDeleteModal(false);
         setConflictStudentName(`${deleteTarget.first_name} ${deleteTarget.last_name}`);
@@ -363,6 +418,14 @@ export function PadronPage() {
           Vas a dar de baja a <strong>{deleteTarget?.first_name} {deleteTarget?.last_name}</strong> ({deleteTarget?.username}).
           Esta acción es irreversible.
         </Text>
+        {waitSeconds > 0 && rateLimit && (
+          <Alert icon={<IconClockPause size={16} />} color="orange" mb="sm" role="alert">
+            {rateLimit.kind === 'locked'
+              ? 'Se superó el máximo de intentos de contraseña para este alumno. '
+              : 'Estás haciendo peticiones demasiado rápido. '}
+            Podrás volver a intentarlo en <strong>{formatWait(waitSeconds)}</strong>.
+          </Alert>
+        )}
         {deleteTarget?.hasPassword ? (
           <>
             <Text size="xs" c="dimmed" mb="sm">
@@ -391,7 +454,14 @@ export function PadronPage() {
         )}
         <Group justify="flex-end" gap="sm">
           <Button variant="subtle" onClick={() => setDeleteModal(false)}>Cancelar</Button>
-          <Button color="red" loading={deleteLoading} onClick={() => void handleDelete()}>Dar de baja</Button>
+          <Button
+            color="red"
+            loading={deleteLoading}
+            disabled={waitSeconds > 0 || lockChecking}
+            onClick={() => void handleDelete()}
+          >
+            Dar de baja
+          </Button>
         </Group>
       </Modal>
           {/* ── Modal conflicto: usuario responsable de apps ── */}

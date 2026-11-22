@@ -140,6 +140,12 @@ export interface DeleteStudentPayload {
   password?: string;
 }
 
+// Estado del bloqueo por intentos de contraseña de un alumno (baja del padrón)
+export interface PasswordLockStatus {
+  locked: boolean;
+  retryAfterSeconds: number;
+}
+
 export interface ImportPreviewRow {
   rowNumber: number;
   valid: boolean;

@@ -268,6 +268,37 @@ export function FaqsPage() {
             </Accordion.Panel>
           </Accordion.Item>
 
+          <Accordion.Item value="baja-bloqueada">
+            <Accordion.Control icon={<IconShieldCheck size={16} />}>
+              Al dar de baja a un usuario me aparece un aviso de espera. ¿Qué pasa?
+            </Accordion.Control>
+            <Accordion.Panel>
+              <List size="sm" spacing="xs">
+                <List.Item>
+                  Para dar de baja a un usuario con contraseña hay que ingresar la contraseña del alumno.
+                  Después de <strong>5 contraseñas incorrectas</strong> la baja de ese alumno se bloquea
+                  durante <strong>15 minutos</strong>, para evitar que alguien pruebe contraseñas hasta acertar.
+                </List.Item>
+                <List.Item>
+                  Cada intento fallido te avisa cuántos intentos quedan. Cuando se agotan, aparece una cuenta
+                  regresiva con el tiempo que falta.
+                </List.Item>
+                <List.Item>
+                  Durante el bloqueo no sirve ni siquiera la contraseña correcta: hay que esperar a que termine.
+                </List.Item>
+                <List.Item>
+                  Si el aviso dice que estás haciendo peticiones demasiado rápido, es otro límite
+                  (por defecto, 10 bajas por minuto): esperá unos segundos y reintentá.
+                </List.Item>
+                <List.Item>
+                  Los valores se configuran en el <Code>.env</Code> del backend
+                  (<Code>STUDENT_PASSWORD_MAX_ATTEMPTS</Code>, <Code>STUDENT_PASSWORD_LOCK_TTL_MS</Code>,
+                  {' '}<Code>STUDENT_DELETE_THROTTLE_LIMIT</Code> y <Code>STUDENT_DELETE_THROTTLE_TTL_MS</Code>).
+                </List.Item>
+              </List>
+            </Accordion.Panel>
+          </Accordion.Item>
+
           <Accordion.Item value="secret-perdido">
             <Accordion.Control icon={<IconHelp size={16} />}>
               Un desarrollador perdió el client_secret de su app. ¿Qué hago?

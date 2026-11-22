@@ -51,6 +51,15 @@ describe('studentsApi', () => {
     expect(res.id).toBe('u2');
   });
 
+  it('getPasswordLock debería consultar /admin/students/:id/password-lock', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { locked: true, retryAfterSeconds: 300 } });
+
+    const res = await studentsApi.getPasswordLock('u1');
+
+    expect(apiClient.get).toHaveBeenCalledWith('/admin/students/u1/password-lock');
+    expect(res).toEqual({ locked: true, retryAfterSeconds: 300 });
+  });
+
   it('update debería hacer PATCH a /admin/students/:id', async () => {
     vi.mocked(apiClient.patch).mockResolvedValue({ data: { id: 'u1', first_name: 'Editado' } });
     const res = await studentsApi.update('u1', { first_name: 'Editado' });
