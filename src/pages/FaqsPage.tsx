@@ -199,8 +199,8 @@ export function FaqsPage() {
               </Code>
               <Text size="sm">
                 Ejemplo de uso: si tu app solo debe permitir el acceso a docentes, hacé{' '}
-                <Code>GET /sso/info/domain-roles</Code> al iniciar y verificá que el rol "Profesor"
-                exista. Luego, al autenticar, verificá que <Code>grupo === 'Profesor'</Code>.
+                <Code>GET /sso/info/domain-roles</Code> al iniciar y verificá que el cargo "Profesor"
+                exista. Luego, al autenticar, verificá que <Code>cargo === 'Profesor'</Code>.
               </Text>
             </Accordion.Panel>
           </Accordion.Item>
