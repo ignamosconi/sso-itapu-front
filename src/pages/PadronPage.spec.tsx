@@ -208,7 +208,7 @@ describe('PadronPage', () => {
           message: 'No es posible eliminar a este usuario porque es responsable de apps OAuth.',
           responsibleApps: [
             { id: 10, clientName: 'Torneito App' },
-            { id: 20, clientName: 'Autogestión' },
+            { id: 20, clientName: 'Visor PDF Exámenes' },
           ] as ResponsibleApp[],
         },
       },
@@ -230,7 +230,7 @@ describe('PadronPage', () => {
     // Modal de conflicto aparece
     expect(await screen.findByText(/No se puede eliminar este usuario/i)).toBeInTheDocument();
     expect(screen.getByText('Torneito App')).toBeInTheDocument();
-    expect(screen.getByText('Autogestión')).toBeInTheDocument();
+    expect(screen.getByText('Visor PDF Exámenes')).toBeInTheDocument();
 
     // Cerrar modal de conflicto
     fireEvent.click(screen.getByRole('button', { name: /^Entendido$/i }));

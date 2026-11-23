@@ -127,7 +127,7 @@ const mockClients: OAuthClientResponse[] = [
   {
     id: 2,
     clientName: 'VISOR PDF EXAMENES',
-    redirectUris: ['https://autogestion.frvm.utn.edu.ar/cb'],
+    redirectUris: ['https://visor.itapu.edu.ar/cb'],
     isActive: false,
     createdAt: '2026-02-15T00:00:00Z',
     updatedAt: '2026-02-15T00:00:00Z',
@@ -187,7 +187,7 @@ describe('ClientsPage', () => {
     // Un solo buscador para nombre, ID y URI
     const searchInput = screen.getByPlaceholderText(/Buscar por nombre, ID o URI/i);
 
-    fireEvent.change(searchInput, { target: { value: 'Autogestión' } });
+    fireEvent.change(searchInput, { target: { value: 'visor pdf' } });
     expect(screen.queryByText('Torneito App')).not.toBeInTheDocument();
     expect(screen.getByText('VISOR PDF EXAMENES')).toBeInTheDocument();
 
@@ -204,12 +204,10 @@ describe('ClientsPage', () => {
     await screen.findByText('Torneito App');
     const searchInput = screen.getByPlaceholderText(/Buscar por nombre, ID o URI/i);
 
-    // sin tilde encuentra "Autogestión"
-    fireEvent.change(searchInput, { target: { value: 'AUTOGESTION' } });
+    fireEvent.change(searchInput, { target: { value: 'VÍSOR' } });
     expect(screen.queryByText('Torneito App')).not.toBeInTheDocument();
     expect(screen.getByText('VISOR PDF EXAMENES')).toBeInTheDocument();
 
-    // por ID (el 2 es de Autogestión)
     fireEvent.change(searchInput, { target: { value: '2' } });
     expect(screen.queryByText('Torneito App')).not.toBeInTheDocument();
     expect(screen.getByText('VISOR PDF EXAMENES')).toBeInTheDocument();
