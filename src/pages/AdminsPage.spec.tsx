@@ -25,26 +25,26 @@ describe('AdminsPage', () => {
   it('debería listar administradores y permitir filtrar por nombre de usuario', async () => {
     vi.mocked(adminsApi.findAll).mockResolvedValueOnce([
       { id: '1', username: 'admin_principal', createdAt: '2026-01-10T00:00:00Z', updatedAt: '' },
-      { id: '2', username: 'soporte_utn', createdAt: '2026-02-15T00:00:00Z', updatedAt: '' },
+      { id: '2', username: 'soporte_itapu', createdAt: '2026-02-15T00:00:00Z', updatedAt: '' },
     ]);
 
     renderAdmins();
 
     expect(await screen.findByText('admin_principal')).toBeInTheDocument();
-    expect(screen.getByText('soporte_utn')).toBeInTheDocument();
+    expect(screen.getByText('soporte_itapu')).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText(/Buscar por usuario/i), {
       target: { value: 'soporte' },
     });
 
     expect(screen.queryByText('admin_principal')).not.toBeInTheDocument();
-    expect(screen.getByText('soporte_utn')).toBeInTheDocument();
+    expect(screen.getByText('soporte_itapu')).toBeInTheDocument();
   });
 
   it('debería filtrar por usuario ignorando tildes y mayúsculas', async () => {
     vi.mocked(adminsApi.findAll).mockResolvedValueOnce([
       { id: '1', username: 'josé.perez', createdAt: '2026-01-10T00:00:00Z', updatedAt: '' },
-      { id: '2', username: 'soporte_utn', createdAt: '2026-02-15T00:00:00Z', updatedAt: '' },
+      { id: '2', username: 'soporte_itapu', createdAt: '2026-02-15T00:00:00Z', updatedAt: '' },
     ]);
 
     renderAdmins();
@@ -53,7 +53,7 @@ describe('AdminsPage', () => {
     fireEvent.change(screen.getByPlaceholderText(/Buscar por usuario/i), { target: { value: 'JOSE' } });
 
     expect(screen.getByText('josé.perez')).toBeInTheDocument();
-    expect(screen.queryByText('soporte_utn')).not.toBeInTheDocument();
+    expect(screen.queryByText('soporte_itapu')).not.toBeInTheDocument();
   });
 
   it('debería mostrar alerta si falla la carga inicial', async () => {

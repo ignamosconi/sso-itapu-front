@@ -9,7 +9,7 @@ import {
 import { useRef, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import logoUtn from '@/assets/logo-utn.png';
+import logoItapu from '@/assets/logo-itapu.png';
 
 const NAVBAR_EXPANDED = 220;
 const NAVBAR_COLLAPSED = 60;
@@ -74,7 +74,7 @@ function DragHandle({ isOpen, onToggle }: DragHandleProps) {
           height: 36,
           borderRadius: 2,
           background: hovered
-            ? 'var(--mantine-color-orange-4)'
+            ? 'var(--mantine-color-itapu-4)'
             : 'var(--mantine-color-default-border)',
           transition: 'background 150ms ease',
         }}
@@ -107,8 +107,8 @@ function NavItem({ to, label, icon: Icon, isOpen, onSelect }: NavItemProps) {
             mx="auto"
             style={(theme) => ({
               borderRadius: theme.radius.sm,
-              background: isActive ? 'var(--mantine-color-orange-light)' : 'transparent',
-              color: isActive ? '#f5a705' : 'var(--mantine-color-text)',
+              background: isActive ? 'var(--mantine-primary-color-light)' : 'transparent',
+              color: 'var(--mantine-primary-color-light-color)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -129,8 +129,8 @@ function NavItem({ to, label, icon: Icon, isOpen, onSelect }: NavItemProps) {
         py={7}
         style={(theme) => ({
           borderRadius: theme.radius.sm,
-          background: isActive ? 'var(--mantine-color-orange-light)' : 'transparent',
-          color: isActive ? '#f5a705' : 'var(--mantine-color-text)',
+          background: isActive ? 'var(--mantine-primary-color-light)' : 'transparent',
+          color: 'var(--mantine-primary-color-light-color)',
         })}
       >
         <Group gap="sm" justify="flex-start" align="center" wrap="nowrap">
@@ -185,8 +185,8 @@ function NavSubMenu({ label, icon: Icon, isOpen, onToggleNavbar, onSelect, items
           onClick={handleParentClick}
           style={(theme) => ({
             borderRadius: theme.radius.sm,
-            background: isAnyChildActive ? 'var(--mantine-color-orange-light)' : 'transparent',
-            color: isAnyChildActive ? '#f5a705' : 'var(--mantine-color-text)',
+            background: isAnyChildActive ? 'var(--mantine-primary-color-light)' : 'transparent',
+            color: 'var(--mantine-primary-color-light-color)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           })}
         >
@@ -203,8 +203,8 @@ function NavSubMenu({ label, icon: Icon, isOpen, onToggleNavbar, onSelect, items
         onClick={handleParentClick}
         style={(theme) => ({
           borderRadius: theme.radius.sm,
-          background: isAnyChildActive && !opened ? 'var(--mantine-color-orange-light)' : 'transparent',
-          color: isAnyChildActive ? '#f5a705' : 'var(--mantine-color-text)',
+          background: isAnyChildActive && !opened ? 'var(--mantine-primary-color-light)' : 'transparent',
+          color: 'var(--mantine-primary-color-light-color)',
         })}
       >
         <Group justify="space-between" align="center" wrap="nowrap">
@@ -309,11 +309,11 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
             {/* Logo y título */}
             <NavLink to="/dashboard" onClick={handleSelect} style={{ textDecoration: 'none', color: 'inherit' }}>
               <Group mb="xl" gap="xs" justify={isOpen ? 'flex-start' : 'center'} wrap="nowrap" style={{ cursor: 'pointer' }}>
-                <Image src={logoUtn} w={32} h={32} fit="contain" style={{ flexShrink: 0 }} />
+                <Image src={logoItapu} w={32} h={32} fit="contain" style={{ flexShrink: 0 }} />
                 {isOpen && (
                   <Box style={{ overflow: 'hidden' }}>
                     <Text fw={600} size="sm" lh={1.2} style={{ whiteSpace: 'nowrap' }}>
-                      SSO FRVM
+                      SSO ITAPU
                     </Text>
                     <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
                       Panel de administración
@@ -338,7 +338,7 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
                 items={[
                   { to: '/padron/cargar', label: 'Cargar usuarios', icon: IconUsers },
                   { to: '/padron', label: 'Padrón', icon: IconUsers },
-                  { to: '/padron/roles', label: 'Roles inst.', icon: IconUsers },
+                  { to: '/padron/roles', label: 'Cargos inst.', icon: IconUsers },
                   { to: '/padron/especialidades', label: 'Especialidades', icon: IconUsers },
                 ]}
               />
@@ -367,7 +367,7 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
                 <UnstyledButton onClick={() => void handleLogout()} disabled={logoutLoading} style={{ overflow: 'hidden' }}>
                   <Group gap="sm" wrap="nowrap">
                     {logoutLoading
-                      ? <Loader size={16} color="orange" style={{ flexShrink: 0 }} />
+                      ? <Loader size={16} style={{ flexShrink: 0 }} />
                       : <IconLogout size={16} style={{ flexShrink: 0 }} />}
                     <Text size="sm" c={logoutLoading ? 'dimmed' : undefined} style={{ whiteSpace: 'nowrap' }}>
                       {logoutLoading ? 'Cerrando...' : 'Cerrar sesión'}
@@ -381,7 +381,7 @@ export function Navbar({ isOpen, onToggle, onClose, isMobile }: NavbarProps) {
                 <Tooltip label="Cerrar sesión" position="right" withArrow>
                   <UnstyledButton onClick={() => void handleLogout()} disabled={logoutLoading}>
                     {logoutLoading
-                      ? <Loader size={16} color="orange" />
+                      ? <Loader size={16} />
                       : <IconLogout size={16} />}
                   </UnstyledButton>
                 </Tooltip>

@@ -151,12 +151,12 @@ export function CargarUsuariosPage() {
               </Group>
               <TextInput label="Fecha de nacimiento" type="date" value={iBirthDate} onChange={e => setIBirthDate(e.target.value)} mb="sm" required />
               <Group grow mb="lg">
-                <Select label="Rol institucional" placeholder="Seleccioná..." value={iRoleId} onChange={setIRoleId}
+                <Select label="Cargo institucional" placeholder="Seleccioná..." value={iRoleId} onChange={setIRoleId}
                   data={roles.map(r => ({ value: String(r.id), label: r.name }))} required />
                 <Select label="Especialidad" placeholder="Seleccioná..." value={iSpecId} onChange={setISpecId}
                   data={specs.map(s => ({ value: String(s.id), label: s.name }))} required />
               </Group>
-              <Button type="submit" fullWidth loading={iLoading} style={{ background: '#f5a705', color: '#1a1200' }}>
+              <Button type="submit" fullWidth loading={iLoading}>
                 Registrar usuario
               </Button>
             </form>
@@ -243,7 +243,7 @@ export function CargarUsuariosPage() {
                 </Table.Tbody>
               </Table>
               {preview.valid > 0 && (
-                <Button onClick={() => void handleConfirm()} loading={confirmLoading} style={{ background: '#f5a705', color: '#1a1200' }}>
+                <Button onClick={() => void handleConfirm()} loading={confirmLoading}>
                   Importar {preview.valid} fila(s) válida(s)
                 </Button>
               )}

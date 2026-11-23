@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Box, Title, Text, Button, Alert, Paper, Center } from '@mantine/core';
+import { Text, Button, Alert } from '@mantine/core';
 import { IconAlertCircle, IconCheck } from '@tabler/icons-react';
 import { apiClient } from '@/api/client';
+import { UserPageLayout } from '@/components/layout/UserPageLayout';
 
 interface ConfirmError {
   message: string;
@@ -58,50 +59,40 @@ export function ConfirmEmailChangePage() {
 
   if (!token) {
     return (
-      <Center h="100vh">
-        <Alert icon={<IconAlertCircle size={16} />} color="red" maw={400}>
+      <UserPageLayout title="Confirmar nuevo email">
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md">
           El link no es válido. Verificá que lo hayas copiado correctamente.
         </Alert>
-      </Center>
+      </UserPageLayout>
     );
   }
 
   return (
-    <Center h="100vh" bg="var(--mantine-color-body)">
-      <Box w={380} px="md">
-        <Title order={2} mb={4} ta="center">Confirmar nuevo email</Title>
-        <Paper withBorder radius="md" p="lg">
-          {done ? (
-            <Alert icon={<IconCheck size={16} />} color="green" radius="md">
-              ¡Listo! Tu email fue actualizado. Por seguridad cerramos todas tus sesiones: la próxima vez que
-              entres a una aplicación vas a tener que iniciar sesión de nuevo. Ya podés cerrar esta página.
-            </Alert>
-          ) : error?.fatal ? (
-            <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" role="alert">
+    <UserPageLayout title="Confirmar nuevo email">
+      {done ? (
+        <Alert icon={<IconCheck size={16} />} color="green" radius="md">
+          ¡Listo! Tu email fue actualizado. Por seguridad cerramos todas tus sesiones: la próxima vez que
+          entres a una aplicación vas a tener que iniciar sesión de nuevo. Ya podés cerrar esta página.
+        </Alert>
+      ) : error?.fatal ? (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" role="alert">
+          {error.message}
+        </Alert>
+      ) : (
+        <>
+          {error && (
+            <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md" radius="md" role="alert">
               {error.message}
             </Alert>
-          ) : (
-            <>
-              {error && (
-                <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md" radius="md" role="alert">
-                  {error.message}
-                </Alert>
-              )}
-              <Text c="dimmed" size="sm" ta="center" mb="xl">
-                Confirmá que querés usar este email para tu cuenta de ITAPU. Se cerrarán todas tus sesiones activas.
-              </Text>
-              <Button
-                fullWidth
-                loading={loading}
-                onClick={() => void handleConfirm()}
-                style={{ background: '#f5a705', color: '#1a1200' }}
-              >
-                Confirmar cambio de email
-              </Button>
-            </>
           )}
-        </Paper>
-      </Box>
-    </Center>
+          <Text c="dimmed" size="sm" ta="center" mb="xl">
+            Confirmá que querés usar este email para tu cuenta de ITAPU. Se cerrarán todas tus sesiones activas.
+          </Text>
+          <Button fullWidth loading={loading} onClick={() => void handleConfirm()}>
+            Confirmar cambio de email
+          </Button>
+        </>
+      )}
+    </UserPageLayout>
   );
 }

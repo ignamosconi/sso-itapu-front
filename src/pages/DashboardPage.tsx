@@ -82,9 +82,9 @@ function StatCard({ icon: Icon, label, value, color }: {
 function SpecialtyChart({ data }: { data: { specialty: string; count: number }[] }) {
 
   const BAR_COLORS = [
-    '#f5a705', '#4c6ef5', '#12b886', '#e64980',
+    '#EC6963', '#4c6ef5', '#12b886', '#e64980',
     '#7950f2', '#fd7e14', '#15aabf', '#94d82d',
-    '#f03e3e', '#1098ad',
+    '#868e96', '#1098ad',
   ];
 
   const max = Math.max(...data.map(d => d.count), 1);
@@ -231,7 +231,7 @@ export function DashboardPage() {
           icon={IconClock}
           label="Registros pendientes"
           value={stats?.pendingRegistrationCount ?? null}
-          color="orange"
+          color="itapu"
         />
       </SimpleGrid>
 

@@ -10,3 +10,45 @@
 body {
   margin: 0;
 }
+
+/* Modo claro: fondo crema de los mails; las tarjetas quedan blancas. */
+:root[data-mantine-color-scheme='light'] {
+  --mantine-color-body: #FEF8F1;
+}
+
+:root[data-mantine-color-scheme='light'] .mantine-Paper-root,
+:root[data-mantine-color-scheme='light'] .mantine-Card-root {
+  background-color: #ffffff;
+}
+
+
+/* Tablas en modo claro: encabezado beige, filas alternas, hover violeta pastel */
+:root[data-mantine-color-scheme='light'] .mantine-Table-table {
+  background-color: #ffffff;
+}
+:root[data-mantine-color-scheme='light'] .mantine-Table-table thead tr {
+  background-color: #F7F3EC;
+  border-bottom: 1px solid #E7E0D5;
+}
+:root[data-mantine-color-scheme='light'] .mantine-Table-table tbody tr:nth-of-type(odd) {
+  background-color: #ffffff;
+}
+:root[data-mantine-color-scheme='light'] .mantine-Table-table tbody tr:nth-of-type(even) {
+  background-color: #F7F3EC;
+}
+:root[data-mantine-color-scheme='light'] .mantine-Table-table tbody tr:hover {
+  background-color: #E8E0F4;
+}
+
+/* FAQ (Accordion) en modo claro: violeta pastel en lugar del gris de Mantine */
+:root[data-mantine-color-scheme='light'] .mantine-Accordion-item {
+  background-color: #F1ECF8;
+  border-color: #E0D6F0;
+}
+:root[data-mantine-color-scheme='light'] .mantine-Accordion-item[data-active] {
+  background-color: #ffffff;
+  border-color: #C9B8E4;
+}
+:root[data-mantine-color-scheme='light'] .mantine-Accordion-control:hover {
+  background-color: #E8E0F4;
+}

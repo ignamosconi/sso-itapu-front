@@ -12,7 +12,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/authStore';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import logoUtn from '@/assets/logo-utn.png';
+import logoItapu from '@/assets/logo-itapu.png';
 import type { Admin2faSetupResponse } from '@/types/api.types';
 
 type LoginStep = 'credentials' | 'setup_2fa' | 'validate_2fa';
@@ -222,8 +222,8 @@ export function LoginPage() {
       >
         <Group justify="space-between" align="center" mb="xs">
           <Group gap="xs">
-            <Image src={logoUtn} w={32} h={32} fit="contain" />
-            <Text fw={600} size="sm">UTN FRVM</Text>
+            <Image src={logoItapu} w={32} h={32} fit="contain" />
+            <Text fw={600} size="sm">SSO ITAPU</Text>
           </Group>
           <ThemeToggle />
         </Group>
@@ -276,7 +276,6 @@ export function LoginPage() {
                 type="submit"
                 fullWidth
                 loading={loading}
-                style={{ background: '#f5a705', color: '#1a1200' }}
               >
                 Continuar
               </Button>
@@ -289,7 +288,7 @@ export function LoginPage() {
           <>
             <Title order={3} mb={4} mt="sm">Configurar autenticador</Title>
 
-            <Alert icon={<IconShieldCheck size={16} />} color="orange" mb="md" radius="md">
+            <Alert icon={<IconShieldCheck size={16} />} color="itapu" mb="md" radius="md">
               <Text size="sm" fw={500}>
                 Descargá <strong>Google Authenticator</strong> u otra app de autenticación para continuar.
               </Text>
@@ -392,7 +391,6 @@ export function LoginPage() {
                 fullWidth
                 loading={loading}
                 disabled={totpCode.length !== 6}
-                style={{ background: '#f5a705', color: '#1a1200' }}
                 mb="xs"
               >
                 Activar autenticador e ingresar
@@ -440,7 +438,6 @@ export function LoginPage() {
                 fullWidth
                 loading={loading}
                 disabled={totpCode.length !== 6}
-                style={{ background: '#f5a705', color: '#1a1200' }}
                 mb="xs"
               >
                 Verificar e ingresar

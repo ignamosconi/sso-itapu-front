@@ -75,7 +75,7 @@ export function EspecialidadesPage() {
           <Title order={2} mb={4}>Especialidades</Title>
           <Text c="dimmed" size="sm">Especialidades disponibles. No se puede eliminar una especialidad con usuarios asignados.</Text>
         </Box>
-        <Button leftSection={<IconPlus size={16} />} onClick={() => { setFormName(''); setFormError(null); setModalOpen(true); }} style={{ background: '#f5a705', color: '#1a1200' }}>
+        <Button leftSection={<IconPlus size={16} />} onClick={() => { setFormName(''); setFormError(null); setModalOpen(true); }} >
           Nueva especialidad
         </Button>
       </Group>
@@ -132,7 +132,7 @@ export function EspecialidadesPage() {
         {formError && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{formError}</Alert>}
         <form onSubmit={e => void handleCreate(e)}>
           <TextInput label="Nombre" placeholder="Química" value={formName} onChange={e => setFormName(e.target.value)} mb="lg" required minLength={2} maxLength={64} />
-          <Button type="submit" fullWidth loading={formLoading} style={{ background: '#f5a705', color: '#1a1200' }}>Crear especialidad</Button>
+          <Button type="submit" fullWidth loading={formLoading} >Crear especialidad</Button>
         </form>
       </Modal>
 

@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  Box, Title, Text, PasswordInput, Button, Alert, Paper, Center, Loader,
-} from '@mantine/core';
+import { Text, PasswordInput, Button, Alert, Center, Loader } from '@mantine/core';
 import { IconAlertCircle, IconCheck } from '@tabler/icons-react';
 import { apiClient } from '@/api/client';
+import { UserPageLayout } from '@/components/layout/UserPageLayout';
 
 function formatTokenError(err: unknown): string {
   const ax = err as { response?: { data?: { message?: string | string[] } } };
@@ -68,74 +67,64 @@ export function SetPasswordPage() {
 
   if (!token) {
     return (
-      <Center h="100vh">
-        <Alert icon={<IconAlertCircle size={16} />} color="red" maw={400}>
+      <UserPageLayout title="Configurar contraseña">
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md">
           El link no es válido. Verificá que lo hayas copiado correctamente.
         </Alert>
-      </Center>
+      </UserPageLayout>
     );
   }
 
   return (
-    <Center h="100vh" bg="var(--mantine-color-body)">
-      <Box w={360} px="md">
-        <Title order={2} mb={4} ta="center">Configurar contraseña</Title>
-        <Paper withBorder radius="md" p="lg">
-          {validating ? (
-            <Center py="xl">
-              <Loader color="orange" size="sm" />
-            </Center>
-          ) : success ? (
-            <Alert icon={<IconCheck size={16} />} color="green" radius="md">
-              ¡Contraseña establecida! Ya podés cerrar esta página.
+    <UserPageLayout title="Configurar contraseña">
+      {validating ? (
+        <Center py="xl">
+          <Loader size="sm" />
+        </Center>
+      ) : success ? (
+        <Alert icon={<IconCheck size={16} />} color="green" radius="md">
+          ¡Contraseña establecida! Ya podés cerrar esta página.
+        </Alert>
+      ) : fatalError ? (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md">
+          {fatalError}
+        </Alert>
+      ) : (
+        <>
+          {formError && (
+            <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md" radius="md">
+              {formError}
             </Alert>
-          ) : fatalError ? (
-            <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md">
-              {fatalError}
-            </Alert>
-          ) : (
-            <>
-              {formError && (
-                <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md" radius="md">
-                  {formError}
-                </Alert>
-              )}
-
-              <Text c="dimmed" size="sm" ta="center" mb="xl">
-                Elegí una contraseña de al menos 8 caracteres para tu cuenta.
-              </Text>
-              <form onSubmit={e => void handleSubmit(e)}>
-                <PasswordInput
-                  label="Nueva contraseña"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  mb="sm"
-                  required
-                  minLength={8}
-                />
-                <PasswordInput
-                  label="Confirmar contraseña"
-                  placeholder="••••••••"
-                  value={confirm}
-                  onChange={e => setConfirm(e.target.value)}
-                  mb="lg"
-                  required
-                  minLength={8}
-                />
-                <Button
-                  type="submit"
-                  fullWidth
-                  loading={loading}
-                  style={{ background: '#f5a705', color: '#1a1200' }}
-                >
-                  Guardar contraseña
-                </Button>
-              </form>
-            </>
           )}
-        </Paper>
-      </Box>
-    </Center>
+
+          <Text c="dimmed" size="sm" ta="center" mb="xl">
+            Elegí una contraseña de al menos 8 caracteres para tu cuenta.
+          </Text>
+          <form onSubmit={e => void handleSubmit(e)}>
+            <PasswordInput
+              label="Nueva contraseña"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              mb="sm"
+              required
+              minLength={8}
+            />
+            <PasswordInput
+              label="Confirmar contraseña"
+              placeholder="••••••••"
+              value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              mb="lg"
+              required
+              minLength={8}
+            />
+            <Button type="submit" fullWidth loading={loading}>
+              Guardar contraseña
+            </Button>
+          </form>
+        </>
+      )}
+    </UserPageLayout>
   );
 }

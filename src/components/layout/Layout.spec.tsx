@@ -36,7 +36,7 @@ describe('Navbar', () => {
       </MantineProvider>,
     );
 
-    expect(screen.getByText('SSO FRVM')).toBeInTheDocument();
+    expect(screen.getByText('SSO ITAPU')).toBeInTheDocument();
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Clientes OAuth')).toBeInTheDocument();
 
@@ -64,7 +64,7 @@ describe('Navbar', () => {
       </MantineProvider>,
     );
 
-    expect(screen.queryByText('SSO FRVM')).not.toBeInTheDocument();
+    expect(screen.queryByText('SSO ITAPU')).not.toBeInTheDocument();
 
     // Click en botón del submenú estando colapsado dispara onToggle
     const buttons = container.querySelectorAll('button');
