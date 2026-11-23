@@ -12,7 +12,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/authStore';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import logoUtn from '@/assets/logo-utn.png';
+import logoUtn from '@/assets/logo-itapu.png';
 import type { Admin2faSetupResponse } from '@/types/api.types';
 
 type LoginStep = 'credentials' | 'setup_2fa' | 'validate_2fa';

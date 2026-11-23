@@ -9,7 +9,7 @@ import {
 import { useRef, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import logoUtn from '@/assets/logo-utn.png';
+import logoUtn from '@/assets/logo-itapu.png';
 
 const NAVBAR_EXPANDED = 220;
 const NAVBAR_COLLAPSED = 60;
