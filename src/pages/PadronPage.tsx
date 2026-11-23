@@ -18,7 +18,7 @@ import { getRateLimitInfo, getPasswordAttemptsInfo, formatWait, RateLimitKind } 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   active: { label: 'Activo', color: 'green' },
   suspended: { label: 'Suspendido', color: 'red' },
-  pending_registration: { label: 'Pendiente', color: 'yellow' },
+  pending_registration: { label: 'Pendiente', color: 'orange' },
 };
 
 interface PadronQuery {
@@ -330,7 +330,7 @@ export function PadronPage() {
             ]}
           />
           <Select
-            placeholder="Rol"
+            placeholder="Cargo"
             clearable
             value={query.role}
             onChange={v => setQuery(q => ({ ...q, role: v, page: 1 }))}
@@ -365,7 +365,7 @@ export function PadronPage() {
                   <Table.Th>Usuario</Table.Th>
                   <Table.Th>Nombre</Table.Th>
                   <Table.Th>DNI</Table.Th>
-                  <Table.Th>Rol</Table.Th>
+                  <Table.Th>Cargo</Table.Th>
                   <Table.Th>Especialidad</Table.Th>
                   <Table.Th miw={115}>Estado</Table.Th>
                   <Table.Th>Acciones</Table.Th>

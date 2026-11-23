@@ -13,8 +13,12 @@ Provee la interfaz gráfica para que los administradores del SSO puedan:
 - Registrar y gestionar **aplicaciones cliente OAuth** (crear, editar, suspender, activar, eliminar, regenerar secret, enviar credenciales por email).
 - Ver **estadísticas** del sistema: apps integradas, usuarios registrados, pendientes de activación y distribución por especialidad.
 - Monitorear el estado del backend SSO.
-- Actualizar propio perfil, cambiar contraseña y resetear el autenticador 2FA.
-- Configurar contraseña de nuevos usuarios a través de una página pública con token de un solo uso.
+- Actualizar el propio perfil, cambiar contraseña y resetear el autenticador 2FA.
+
+Además, incluye dos páginas públicas que abren los usuarios desde un email, con token de un solo uso y modo claro/oscuro:
+
+- Configurar la contraseña de una cuenta nueva (`/set-password`).
+- Confirmar un cambio de email (`/confirm-email`).
 
 
 ## Tecnologías utilizadas
@@ -29,7 +33,6 @@ Provee la interfaz gráfica para que los administradores del SSO puedan:
 | HTTP | Axios |
 | Routing | React Router DOM 7 |
 | Estado global | Zustand |
-| Excel | SheetJS (`xlsx`) |
 | Tests | Vitest + Testing Library |
 | Lint | oxlint |
 
@@ -56,6 +59,14 @@ cp .env.example .env
 > Las variables con prefijo `VITE_` quedan embebidas en el bundle de producción. No pongas secretos acá.
 
 
+## Tema y estilos
+
+- El tema de Mantine está en `src/theme.ts`: paleta `itapu` basada en el violeta del logo (`#422774`). En modo claro los botones usan ese tono; en modo oscuro, uno más luminoso (`#7650B3`) para que se distingan del fondo.
+- Modo claro: fondo crema (`#FEF8F1`), tarjetas blancas y tablas con filas alternas. Estos ajustes están en `src/index.css`.
+- Las páginas que abren los usuarios desde un email (`/set-password`, `/confirm-email`) comparten el marco `src/components/layout/UserPageLayout.tsx`: logo, tarjeta y selector de tema. Arrancan en modo claro, igual que los emails, si la persona nunca eligió un tema.
+- Para cambiar el color de los botones y acentos de todo el panel, editá solo `src/theme.ts`. No uses `style={{ background: ... }}` en cada botón.
+
+
 ## Comandos disponibles
 
 ```bash
@@ -75,6 +86,7 @@ npm run test:cov     # tests con cobertura
 |------|-------------|---------|
 | `/login` | Login de administradores | ✓ |
 | `/set-password?token=...` | Setup / reset de contraseña de usuarios | ✓ |
+| `/confirm-email?token=...` | Confirmación de cambio de email de un usuario | ✓ |
 | `/dashboard` | Estadísticas y health del sistema | — |
 | `/padron` | Tabla de usuarios con filtros y paginación | — |
 | `/padron/cargar` | Alta individual y carga masiva por Excel | — |
@@ -88,16 +100,16 @@ npm run test:cov     # tests con cobertura
 
 ## Flujo de autenticación de administradores
 
+```
 POST /admin/auth/login → pending_token
 
 Primera vez (requires_2fa_setup = true):
-POST /admin/auth/2fa/setup → QR + confirm_pending_token
-POST /admin/auth/2fa/confirm → access_token + refresh_token
+  POST /admin/auth/2fa/setup   → QR + confirm_pending_token
+  POST /admin/auth/2fa/confirm → access_token + refresh_token
 
 Logins posteriores:
-POST /admin/auth/2fa/validate → access_token + refresh_token
-
-
+  POST /admin/auth/2fa/validate → access_token + refresh_token
+```
 
 ### Almacenamiento de tokens
 
@@ -120,8 +132,9 @@ El interceptor de Axios detecta respuestas `401` e intenta renovar el access tok
 2. Completá las columnas: `Nombre/s`, `Apellido/s`, `DNI`, `Email`, `Fecha de nacimiento`, `Cargo`, `Especialidad`.
 3. Los valores de **Cargo** y **Especialidad** deben coincidir exactamente con los cargados en el sistema. El Excel de ejemplo los lista en las columnas I y J.
 4. Las fechas se cargan con formato fecha de Excel (DD/MM/AAAA).
-5. Subí el archivo y usá el **preview** para verificar errores antes de confirmar.
-6. Confirmá: solo se importan las filas válidas.
+5. Formatos aceptados: `.xlsx`, `.xls` (Excel) y `.ods` (LibreOffice Calc).
+6. Subí el archivo y usá el **preview** para verificar errores antes de confirmar.
+7. Confirmá: solo se importan las filas válidas.
 
 Al crear un usuario (individual o masivo), el sistema genera automáticamente su nombre de usuario y le envía un email de bienvenida con un link para configurar su contraseña.
 
@@ -133,6 +146,10 @@ El nombre de usuario se genera a partir de los datos del usuario:
 - Si hay colisión, se agrega sufijo numérico (`_2`, `_3`, etc.).
 
 Ejemplo: `Ignacio Mariano Mosconi, DNI 44244136` → `immosconi136`
+
+### Cambio de email
+
+Un administrador puede iniciar el cambio de email de un usuario activo. Se envía un link de confirmación al email nuevo y un aviso al actual; el cambio se aplica recién cuando el usuario confirma desde `/confirm-email`. Al confirmar se cierran todas sus sesiones.
 
 
 ## Gestión de clientes OAuth
@@ -154,8 +171,14 @@ Al crear un cliente, el backend genera un `clientSecret` hasheado. El flujo es:
 npm run test
 ```
 
-- `src/store/authStore.test.ts` — lógica del store (setTokens, logout, refresh, bootstrap)
-- `src/hooks/useAuth.test.ts` — flujo completo de 2FA
+Los tests están junto al código que prueban (`*.spec.ts(x)` y `*.test.ts(x)`):
+
+- `src/api/` — clientes HTTP (admin, auth, catálogos, estadísticas, alumnos) e interceptor de Axios.
+- `src/store/authStore.test.ts` — lógica del store (setTokens, logout, refresh, bootstrap).
+- `src/hooks/useAuth.test.ts` — flujo completo de 2FA.
+- `src/components/layout/` — layout y rutas protegidas.
+- `src/pages/` — una spec por página, incluidas las públicas (`SetPasswordPage`, `ConfirmEmailChangePage`).
+- `src/utils/` — normalización de texto y rate limit.
 
 
 ## CI — GitHub Actions

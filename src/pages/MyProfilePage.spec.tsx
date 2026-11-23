@@ -45,7 +45,7 @@ describe('MyProfilePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useAuthStore.setState({
-      adminUsername: 'admin.utn',
+      adminUsername: 'admin.itapu',
       accessToken: 'token-123',
       isAuthenticated: true,
     });
@@ -64,7 +64,7 @@ describe('MyProfilePage', () => {
     const form = usernameInput.closest('form')!;
     const passInput = within(form).getByLabelText(/^Contraseña actual/i);
 
-    fireEvent.change(usernameInput, { target: { value: 'admin.utn' } });
+    fireEvent.change(usernameInput, { target: { value: 'admin.itapu' } });
     fireEvent.change(passInput, { target: { value: 'Password123!' } });
     fireEvent.submit(form);
 
@@ -101,7 +101,7 @@ describe('MyProfilePage', () => {
   it('debería cambiar de modo a Contraseña, validar coincidencia y enviar el cambio', async () => {
     vi.mocked(adminsApi.updateSelf).mockResolvedValueOnce({
       id: 'adm-1',
-      username: 'admin.utn',
+      username: 'admin.itapu',
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-02T00:00:00Z',
     });

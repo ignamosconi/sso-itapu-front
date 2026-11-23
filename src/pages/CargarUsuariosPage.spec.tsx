@@ -49,7 +49,7 @@ describe('CargarUsuariosPage', () => {
       first_name: 'Ignacio Mariano',
       last_name: 'Mosconi',
       dni: 44244136,
-      email: 'ignacio@frvm.utn.edu.ar',
+      email: 'ignacio@itapu.edu.ar',
       birth_date: '2002-05-15',
       account_status: 'pending_registration',
       hasPassword: false,
@@ -69,10 +69,10 @@ describe('CargarUsuariosPage', () => {
     fireEvent.change(screen.getByLabelText(/Nombres/i), { target: { value: 'Ignacio Mariano' } });
     fireEvent.change(screen.getByLabelText(/Apellidos/i), { target: { value: 'Mosconi' } });
     fireEvent.change(screen.getByLabelText(/DNI/i), { target: { value: '44244136' } });
-    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'ignacio@frvm.utn.edu.ar' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'ignacio@itapu.edu.ar' } });
     fireEvent.change(screen.getByLabelText(/Fecha de nacimiento/i), { target: { value: '2002-05-15' } });
 
-    const rolSelect = screen.getByRole('combobox', { name: /Rol institucional/i });
+    const rolSelect = screen.getByRole('combobox', { name: /Cargo institucional/i });
     fireEvent.keyDown(rolSelect, { key: 'ArrowDown' });
     fireEvent.click(screen.getByRole('option', { name: 'Alumno', hidden: true }));
 
@@ -89,7 +89,7 @@ describe('CargarUsuariosPage', () => {
       first_name: 'Ignacio Mariano',
       last_name: 'Mosconi',
       dni: 44244136,
-      email: 'ignacio@frvm.utn.edu.ar',
+      email: 'ignacio@itapu.edu.ar',
       birth_date: '2002-05-15',
       domain_role_id: 1,
       specialty_id: 2,
@@ -110,7 +110,7 @@ describe('CargarUsuariosPage', () => {
             first_name: 'Ana',
             last_name: 'López',
             dni: 40111222,
-            email: 'ana@frvm.utn.edu.ar',
+            email: 'ana@itapu.edu.ar',
             birth_date: '2001-03-10',
             domainRoleId: 1,
             specialtyId: 2,
@@ -181,7 +181,7 @@ describe('CargarUsuariosPage', () => {
           first_name: 'Ana',
           last_name: 'López',
           dni: 40111222,
-          email: 'ana@frvm.utn.edu.ar',
+          email: 'ana@itapu.edu.ar',
           birth_date: '2001-03-10',
           domainRoleId: 1,
           specialtyId: 2,

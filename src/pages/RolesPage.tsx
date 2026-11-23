@@ -32,7 +32,7 @@ export function RolesPage() {
       if (!silent) setLoading(true);
       setRoles(await rolesApi.findAll());
     }
-    catch { setError('Error al cargar los roles.'); }
+    catch { setError('Error al cargar los cargos.'); }
     finally { if (!silent) setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
@@ -50,7 +50,7 @@ export function RolesPage() {
       await load(true);
     } catch (err) {
       const ax = err as { response?: { data?: { message?: string } } };
-      setFormError(ax?.response?.data?.message ?? 'Error al crear el rol.');
+      setFormError(ax?.response?.data?.message ?? 'Error al crear el cargo.');
     } finally { setFormLoading(false); }
   };
 
@@ -63,7 +63,7 @@ export function RolesPage() {
       await load(true);
     } catch (err) {
       const ax = err as { response?: { data?: { message?: string } } };
-      setError(ax?.response?.data?.message ?? 'Error al eliminar el rol.');
+      setError(ax?.response?.data?.message ?? 'Error al eliminar el cargo.');
       setDeleteModal(false);
     } finally { setDeleteLoading(false); }
   };
@@ -72,11 +72,11 @@ export function RolesPage() {
     <Box>
       <Group justify="space-between" mb="xl">
         <Box>
-          <Title order={2} mb={4}>Roles institucionales</Title>
-          <Text c="dimmed" size="sm">Tipos de rol que se pueden asignar a los usuarios. No se puede eliminar un rol con usuarios asignados.</Text>
+          <Title order={2} mb={4}>Cargos institucionales</Title>
+          <Text c="dimmed" size="sm">Cargos que se pueden asignar a los usuarios. No se puede eliminar un cargo con usuarios asignados.</Text>
         </Box>
-        <Button leftSection={<IconPlus size={16} />} onClick={() => { setFormName(''); setFormError(null); setModalOpen(true); }} style={{ background: '#f5a705', color: '#1a1200' }}>
-          Nuevo rol
+        <Button leftSection={<IconPlus size={16} />} onClick={() => { setFormName(''); setFormError(null); setModalOpen(true); }}>
+          Nuevo cargo inst.
         </Button>
       </Group>
 
@@ -128,16 +128,16 @@ export function RolesPage() {
         <Pagination total={totalPages} value={page} onChange={setPage} />
       </Group>
 
-      <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo rol institucional" centered>
+      <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo cargo institucional" centered>
         {formError && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{formError}</Alert>}
         <form onSubmit={e => void handleCreate(e)}>
           <TextInput label="Nombre" placeholder="Alumno" value={formName} onChange={e => setFormName(e.target.value)} mb="lg" required minLength={2} maxLength={64} />
-          <Button type="submit" fullWidth loading={formLoading} style={{ background: '#f5a705', color: '#1a1200' }}>Crear rol</Button>
+          <Button type="submit" fullWidth loading={formLoading}>Crear cargo</Button>
         </form>
       </Modal>
 
-      <Modal opened={deleteModal} onClose={() => setDeleteModal(false)} title="Eliminar rol" centered size="sm">
-        <Text size="sm" mb="lg">¿Eliminar el rol <strong>{deleteTarget?.name}</strong>? Esta acción es irreversible y fallará si hay usuarios asignados a él.</Text>
+      <Modal opened={deleteModal} onClose={() => setDeleteModal(false)} title="Eliminar cargo" centered size="sm">
+        <Text size="sm" mb="lg">¿Eliminar el cargo <strong>{deleteTarget?.name}</strong>? Esta acción es irreversible y fallará si hay usuarios asignados a él.</Text>
         <Group justify="flex-end" gap="sm">
           <Button variant="subtle" onClick={() => setDeleteModal(false)}>Cancelar</Button>
           <Button color="red" loading={deleteLoading} onClick={() => void handleDelete()}>Eliminar</Button>

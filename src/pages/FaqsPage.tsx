@@ -21,7 +21,7 @@ export function FaqsPage() {
       {/* Repositorios */}
       <Card withBorder radius="md" p="lg" mb="xl">
         <Group mb="sm">
-          <ThemeIcon variant="light" color="orange" radius="md">
+          <ThemeIcon variant="light" color="itapu" radius="md">
             <IconBook size={16} />
           </ThemeIcon>
           <Text fw={600}>Repositorios</Text>
@@ -82,7 +82,7 @@ export function FaqsPage() {
               Soy desarrollador. ¿Cómo integro mi app con el SSO?
             </Accordion.Control>
             <Accordion.Panel>
-              <Alert icon={<IconShieldCheck size={16} />} color="orange" mb="md" radius="md">
+              <Alert icon={<IconShieldCheck size={16} />} color="itapu" mb="md" radius="md">
                 <Text size="sm">
                   Este instructivo también va en el email de credenciales que recibe el desarrollador.
                 </Text>
@@ -99,7 +99,7 @@ export function FaqsPage() {
                 <List.Item>
                   <Text size="sm" fw={500}>0. Consultá los valores dinámicos (no hardcodees)</Text>
                   <Code block mt={4}>
-                    {`GET ${ssoUrl}/sso/info/domain-roles\n// → ["Alumno", "Docente", "Autoridad", ...]\n// Valores posibles del campo "grupo" en /sso/me\n\nGET ${ssoUrl}/sso/info/specialties\n// → ["Sistemas", "Mecánica", ...]\n// Valores posibles del campo "carrera" en /sso/me`}
+                    {`GET ${ssoUrl}/sso/info/domain-roles\n// → ["Alumno", "Docente", "Autoridad", ...]\n// Valores posibles del campo "cargo" en /sso/me\n\nGET ${ssoUrl}/sso/info/specialties\n// → ["Sistemas", "Mecánica", ...]\n// Valores posibles del campo "especialidad" en /sso/me`}
                   </Code>
                   <Text size="xs" c="dimmed" mt={4}>
                     Estos endpoints son públicos. Si el administrador agrega o renombra un cargo o
@@ -186,21 +186,21 @@ export function FaqsPage() {
 
           <Accordion.Item value="roles-especialidades">
             <Accordion.Control icon={<IconCode size={16} />}>
-              ¿Cómo sé qué valores puede tener el campo "grupo" o "carrera" del usuario?
+              ¿Cómo sé qué valores puede tener el campo "cargo" o "especialidad" del usuario?
             </Accordion.Control>
             <Accordion.Panel>
               <Text size="sm" mb="sm">
-                El campo <Code>grupo</Code> contiene el cargo institucional (Alumno, Docente, etc.) y{' '}
-                <Code>carrera</Code> la especialidad. Estos valores los configura el administrador y
+                El campo <Code>cargo</Code> contiene el cargo institucional (Alumno, Profesor, etc.) y{' '}
+                <Code>especialidad</Code> la especialidad. Estos valores los configura el administrador y
                 pueden cambiar. Para no hardcodearlos, consultá los endpoints públicos:
               </Text>
               <Code block mb="sm">
-                {`GET ${ssoUrl}/sso/info/domain-roles\n→ ["Alumno", "Docente", "Autoridad", ...]\n\nGET ${ssoUrl}/sso/info/specialties\n→ ["Sistemas", "Mecánica", ...]`}
+                {`GET ${ssoUrl}/sso/info/domain-roles\n→ ["Alumno", "Profesor", "Autoridad", ...]\n\nGET ${ssoUrl}/sso/info/specialties\n→ ["Sistemas", "Mecánica", ...]`}
               </Code>
               <Text size="sm">
                 Ejemplo de uso: si tu app solo debe permitir el acceso a docentes, hacé{' '}
-                <Code>GET /sso/info/domain-roles</Code> al iniciar y verificá que el rol "Docente"
-                exista. Luego, al autenticar, verificá que <Code>grupo === 'Docente'</Code>.
+                <Code>GET /sso/info/domain-roles</Code> al iniciar y verificá que el rol "Profesor"
+                exista. Luego, al autenticar, verificá que <Code>grupo === 'Profesor'</Code>.
               </Text>
             </Accordion.Panel>
           </Accordion.Item>
@@ -365,7 +365,7 @@ export function FaqsPage() {
             </Accordion.Control>
             <Accordion.Panel>
               <List size="sm" spacing="xs">
-                <List.Item>Los cargos se gestionan en <strong>Usuarios → Roles institucionales</strong>.</List.Item>
+                <List.Item>Los cargos se gestionan en <strong>Usuarios → Cargos institucionales</strong>.</List.Item>
                 <List.Item>Las especialidades se gestionan en <strong>Usuarios → Especialidades</strong>.</List.Item>
                 <List.Item>Podés crear los que necesites. El nombre solo admite letras y espacios.</List.Item>
                 <List.Item>

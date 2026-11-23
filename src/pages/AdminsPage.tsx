@@ -110,7 +110,6 @@ export function AdminsPage() {
         <Button
           leftSection={<IconPlus size={16} />}
           onClick={openCreate}
-          style={{ background: '#f5a705', color: '#1a1200' }}
         >
           Nuevo admin
         </Button>
@@ -202,7 +201,6 @@ export function AdminsPage() {
             type="submit"
             fullWidth
             loading={formLoading}
-            style={{ background: '#f5a705', color: '#1a1200' }}
           >
             Crear administrador
           </Button>

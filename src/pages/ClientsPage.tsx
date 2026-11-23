@@ -119,7 +119,7 @@ function ClientCard({
           </Tooltip>
           {client.isActive ? (
             <Tooltip label="Suspender app">
-              <ActionIcon variant="subtle" color="yellow" onClick={() => onSuspend(client.id)}>
+              <ActionIcon variant="subtle" color="orange" onClick={() => onSuspend(client.id)}>
                 <IconPlayerPause size={16} />
               </ActionIcon>
             </Tooltip>
@@ -581,7 +581,6 @@ export function ClientsPage() {
         <Button
           leftSection={<IconPlus size={16} />}
           onClick={openCreate}
-          style={{ background: '#f5a705', color: '#1a1200' }}
         >
           Nuevo cliente
         </Button>
@@ -714,7 +713,6 @@ export function ClientsPage() {
             type="submit"
             fullWidth
             loading={formLoading}
-            style={{ background: '#f5a705', color: '#1a1200' }}
           >
             {editing ? 'Guardar cambios' : 'Crear cliente'}
           </Button>
@@ -840,7 +838,7 @@ export function ClientsPage() {
                 <Text size="xs" c="dimmed">{secretModalData.responsibleUser.censoredEmail}</Text>
               </Card>
             ) : (
-              <Alert color="yellow" mb="md" radius="md">
+              <Alert color="orange" mb="md" radius="md">
                 Este cliente no tiene usuario responsable asignado. Asigná uno desde la lista de clientes.
               </Alert>
             )}
@@ -850,7 +848,6 @@ export function ClientsPage() {
               loading={sendCredLoading}
               disabled={!secretModalData?.responsibleUser}
               onClick={() => void handleSendCredentials()}
-              style={{ background: '#f5a705', color: '#1a1200' }}
             >
               Enviar credenciales por email
             </Button>
@@ -895,7 +892,7 @@ export function ClientsPage() {
                 <Text size="xs" c="dimmed">{emailFromCardClient.responsibleUser.censoredEmail}</Text>
               </Card>
             ) : (
-              <Alert color="yellow" mb="md" radius="md">
+              <Alert color="orange" mb="md" radius="md">
                 Este cliente no tiene usuario responsable asignado. Asigná uno desde el botón de editar.
               </Alert>
             )}
@@ -905,7 +902,6 @@ export function ClientsPage() {
               loading={emailFromCardLoading}
               disabled={!emailFromCardClient?.responsibleUser}
               onClick={() => void handleSendCredentialsFromCard()}
-              style={{ background: '#f5a705', color: '#1a1200' }}
             >
               Enviar credenciales al responsable
             </Button>

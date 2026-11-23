@@ -63,7 +63,7 @@ describe('RolesPage', () => {
     expect(screen.queryByText('Jefe de Área')).not.toBeInTheDocument();
   });
 
-  it('debería crear un nuevo rol desde el modal', async () => {
+  it('debería crear un nuevo cargo desde el modal', async () => {
     vi.mocked(rolesApi.findAll)
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
@@ -78,7 +78,7 @@ describe('RolesPage', () => {
 
     renderRoles();
 
-    fireEvent.click(await screen.findByRole('button', { name: /Nuevo rol/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Nuevo cargo/i }));
     const nameInput = await screen.findByLabelText(/Nombre/i);
     fireEvent.change(nameInput, { target: { value: 'Nodocente' } });
     fireEvent.submit(nameInput.closest('form')!);
@@ -92,7 +92,7 @@ describe('RolesPage', () => {
     );
   });
 
-  it('debería eliminar un rol y manejar error si tiene usuarios asignados', async () => {
+  it('debería eliminar un cargo y manejar error si tiene usuarios asignados', async () => {
     vi.mocked(rolesApi.findAll)
       .mockResolvedValueOnce([
         { id: 1, name: 'Temporal', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
@@ -108,7 +108,7 @@ describe('RolesPage', () => {
     const { container } = renderRoles();
     await screen.findByText('Temporal');
 
-    // Eliminar primer rol exitosamente
+    // Eliminar primer cargo exitosamente
     const trashButtons = container.querySelectorAll('tbody button');
     fireEvent.click(trashButtons[0]);
 
@@ -119,12 +119,12 @@ describe('RolesPage', () => {
       () => {
         expect(rolesApi.remove).toHaveBeenCalledWith(1);
         expect(screen.queryByText('Temporal')).not.toBeInTheDocument();
-        expect(screen.queryByText(/¿Eliminar el rol/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/¿Eliminar el cargo/i)).not.toBeInTheDocument();
       },
       { timeout: 3000 },
     );
 
-    // Intentar eliminar segundo rol con error del backend
+    // Intentar eliminar segundo cargo con error del backend
     const remainingTrash = container.querySelectorAll('tbody button');
     fireEvent.click(remainingTrash[0]);
     fireEvent.click(await screen.findByRole('button', { name: /^Eliminar$/i }));

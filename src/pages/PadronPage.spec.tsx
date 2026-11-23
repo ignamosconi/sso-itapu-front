@@ -32,7 +32,7 @@ const studentActiveWithPass: StudentResponse = {
   username: 'j.perez',
   first_name: 'Juan',
   last_name: 'Pérez',
-  email: 'juan.perez@frvm.utn.edu.ar',
+  email: 'juan.perez@itapu.edu.ar',
   dni: 40123456,
   birth_date: '2000-05-10',
   account_status: 'active',
@@ -48,7 +48,7 @@ const studentPendingNoPass: StudentResponse = {
   username: 'm.gomez',
   first_name: 'María',
   last_name: 'Gómez',
-  email: 'maria.gomez@frvm.utn.edu.ar',
+  email: 'maria.gomez@itapu.edu.ar',
   dni: 41987654,
   birth_date: '2001-08-20',
   account_status: 'pending_registration',
@@ -138,8 +138,8 @@ describe('PadronPage', () => {
     const rowButtons = container.querySelectorAll('tbody tr')[0].querySelectorAll('button');
     fireEvent.click(rowButtons[1]);
 
-    // Verifica maskEmail('maria.gomez@frvm.utn.edu.ar') -> 'ma*********@frvm.utn.edu.ar'
-    expect(await screen.findByText('ma*********@frvm.utn.edu.ar')).toBeInTheDocument();
+    // Verifica maskEmail('maria.gomez@itapu.edu.ar') -> 'ma*********@itapu.edu.ar'
+    expect(await screen.findByText('ma*********@itapu.edu.ar')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^Reenviar$/i }));
 
@@ -507,7 +507,7 @@ describe('PadronPage', () => {
     await openEmailModal();
 
     // Muestra el email actual enmascarado
-    expect(screen.getByText('ju********@frvm.utn.edu.ar')).toBeInTheDocument();
+    expect(screen.getByText('ju********@itapu.edu.ar')).toBeInTheDocument();
 
     fillEmailForm('  nuevo.mail@gmail.com ', 'ClaveAlumno123');
     submitEmailChange();
@@ -525,7 +525,7 @@ describe('PadronPage', () => {
 
   it.each([
     ['un email inválido', 'no-es-un-email', 'ClaveAlumno123', /Ingresá un email válido/i],
-    ['el mismo email (sin importar mayúsculas)', 'JUAN.PEREZ@frvm.utn.edu.ar', 'ClaveAlumno123', /igual al actual/i],
+    ['el mismo email (sin importar mayúsculas)', 'JUAN.PEREZ@itapu.edu.ar', 'ClaveAlumno123', /igual al actual/i],
     ['sin contraseña', 'nuevo@gmail.com', '', /Ingresá la contraseña del alumno/i],
   ])('debería validar antes de enviar: %s', async (_label, email, password, message) => {
     vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });

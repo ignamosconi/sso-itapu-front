@@ -254,7 +254,6 @@ export function MyProfilePage() {
                   type="submit"
                   fullWidth
                   loading={profileLoading}
-                  style={{ background: '#f5a705', color: '#1a1200' }}
                 >
                   Actualizar nombre de usuario
                 </Button>
@@ -293,7 +292,6 @@ export function MyProfilePage() {
                   type="submit"
                   fullWidth
                   loading={profileLoading}
-                  style={{ background: '#f5a705', color: '#1a1200' }}
                 >
                   Actualizar contraseña
                 </Button>

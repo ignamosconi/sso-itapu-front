@@ -126,7 +126,7 @@ const mockClients: OAuthClientResponse[] = [
   },
   {
     id: 2,
-    clientName: 'Autogestión FRVM',
+    clientName: 'VISOR PDF EXAMENES',
     redirectUris: ['https://autogestion.frvm.utn.edu.ar/cb'],
     isActive: false,
     createdAt: '2026-02-15T00:00:00Z',
@@ -177,7 +177,7 @@ describe('ClientsPage', () => {
     const { container } = renderClients();
 
     expect(await screen.findByText('Torneito App')).toBeInTheDocument();
-    expect(screen.getByText('Autogestión FRVM')).toBeInTheDocument();
+    expect(screen.getByText('VISOR PDF EXAMENES')).toBeInTheDocument();
     expect(screen.getByText('Suspendido')).toBeInTheDocument();
 
     const firstCardButtons = container.querySelectorAll('.mantine-Card-root')[0].querySelectorAll('button');
@@ -189,12 +189,12 @@ describe('ClientsPage', () => {
 
     fireEvent.change(searchInput, { target: { value: 'Autogestión' } });
     expect(screen.queryByText('Torneito App')).not.toBeInTheDocument();
-    expect(screen.getByText('Autogestión FRVM')).toBeInTheDocument();
+    expect(screen.getByText('VISOR PDF EXAMENES')).toBeInTheDocument();
 
     fireEvent.change(searchInput, { target: { value: '' } });
     fireEvent.change(searchInput, { target: { value: 'localhost:4000' } });
     expect(screen.getByText('Torneito App')).toBeInTheDocument();
-    expect(screen.queryByText('Autogestión FRVM')).not.toBeInTheDocument();
+    expect(screen.queryByText('VISOR PDF EXAMENES')).not.toBeInTheDocument();
   });
 
   it('debería buscar sin importar tildes ni mayúsculas, y también por ID', async () => {
@@ -207,12 +207,12 @@ describe('ClientsPage', () => {
     // sin tilde encuentra "Autogestión"
     fireEvent.change(searchInput, { target: { value: 'AUTOGESTION' } });
     expect(screen.queryByText('Torneito App')).not.toBeInTheDocument();
-    expect(screen.getByText('Autogestión FRVM')).toBeInTheDocument();
+    expect(screen.getByText('VISOR PDF EXAMENES')).toBeInTheDocument();
 
     // por ID (el 2 es de Autogestión)
     fireEvent.change(searchInput, { target: { value: '2' } });
     expect(screen.queryByText('Torneito App')).not.toBeInTheDocument();
-    expect(screen.getByText('Autogestión FRVM')).toBeInTheDocument();
+    expect(screen.getByText('VISOR PDF EXAMENES')).toBeInTheDocument();
   });
 
   it('debería buscar al usuario responsable en el servidor (con debounce) y no solo entre los primeros resultados', async () => {
