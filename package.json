@@ -16,7 +16,7 @@
     "@mantine/core": "^9.4.1",
     "@mantine/hooks": "^9.4.1",
     "@mantine/modals": "^9.4.1",
-    "@mantine/notifications": "^9.4.1",
+    "@mantine/notifications": "^9.8.2",
     "@tabler/icons-react": "^3.44.0",
     "axios": "^1.21.1",
     "react": "^19.2.7",
