@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getErrorMessage } from '@/utils/apiError';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Title, Text, TextInput, PasswordInput,
@@ -80,9 +81,7 @@ export function MyProfilePage() {
       setUsernameCurrentPassword('');
       setProfileSuccess('Nombre de usuario actualizado correctamente.');
     } catch (err) {
-      const axiosError = err as { response?: { data?: { message?: string | string[] } } };
-      const msg = axiosError?.response?.data?.message;
-      setProfileError(Array.isArray(msg) ? msg.join(' ') : (msg ?? 'Error al actualizar el usuario.'));
+      setProfileError(getErrorMessage(err, 'Error al actualizar el usuario.'));
     } finally {
       setProfileLoading(false);
     }
@@ -113,9 +112,7 @@ export function MyProfilePage() {
       setConfirmPassword('');
       setProfileSuccess('Contraseña actualizada correctamente.');
     } catch (err) {
-      const axiosError = err as { response?: { data?: { message?: string | string[] } } };
-      const msg = axiosError?.response?.data?.message;
-      setProfileError(Array.isArray(msg) ? msg.join(' ') : (msg ?? 'Error al actualizar la contraseña.'));
+      setProfileError(getErrorMessage(err, 'Error al actualizar la contraseña.'));
     } finally {
       setProfileLoading(false);
     }
@@ -134,9 +131,7 @@ export function MyProfilePage() {
       try { await logout(); } catch { /* ignorado intencionalmente */ }
       navigate('/login');
     } catch (err) {
-      const axiosError = err as { response?: { data?: { message?: string | string[] } } };
-      const msg = axiosError?.response?.data?.message;
-      setDeleteError(Array.isArray(msg) ? msg.join(' ') : (msg ?? 'Error al eliminar la cuenta.'));
+      setDeleteError(getErrorMessage(err, 'Error al eliminar la cuenta.'));
     } finally {
       setDeleteLoading(false);
     }
@@ -152,8 +147,7 @@ export function MyProfilePage() {
       setResetSuccess(true);
       setResetPassword('');
     } catch (err) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setResetError(axiosError?.response?.data?.message ?? 'Error al resetear el 2FA.');
+      setResetError(getErrorMessage(err, 'Error al resetear el 2FA.'));
     } finally {
       setResetLoading(false);
     }
@@ -249,6 +243,7 @@ export function MyProfilePage() {
                   mb="lg"
                   required
                   minLength={8}
+                  maxLength={128}
                 />
                 <Button
                   type="submit"
@@ -268,6 +263,7 @@ export function MyProfilePage() {
                   mb="sm"
                   required
                   minLength={8}
+                  maxLength={128}
                 />
                 <PasswordInput
                   label="Nueva contraseña"
@@ -278,6 +274,7 @@ export function MyProfilePage() {
                   mb="sm"
                   required
                   minLength={8}
+                  maxLength={128}
                 />
                 <PasswordInput
                   label="Confirmar nueva contraseña"
@@ -287,6 +284,7 @@ export function MyProfilePage() {
                   mb="lg"
                   required
                   minLength={8}
+                  maxLength={128}
                 />
                 <Button
                   type="submit"
@@ -328,6 +326,7 @@ export function MyProfilePage() {
                 mb="lg"
                 required
                 minLength={8}
+                maxLength={128}
               />
               <Button
                 type="submit"
@@ -375,6 +374,7 @@ export function MyProfilePage() {
                 mb="lg"
                 required
                 minLength={8}
+                maxLength={128}
               />
               <Button
                 type="submit"

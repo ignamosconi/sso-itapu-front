@@ -4,6 +4,12 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { MantineProvider } from '@mantine/core';
 import { LoginPage } from './LoginPage';
 import { useAuthStore } from '@/store/authStore';
+import { AxiosError, AxiosHeaders } from 'axios';
+
+function httpError(status: number, data?: unknown, headers: Record<string, string> = {}) {
+  const config = { headers: new AxiosHeaders() };
+  return new AxiosError('fail', 'ERR_BAD_REQUEST', config, {}, { status, statusText: '', data, headers, config });
+}
 
 const mockLoginStep1 = vi.fn();
 const mockSetup2fa = vi.fn();
@@ -75,6 +81,75 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
 
     expect(await screen.findByText(/Credenciales inválidas\. Verificá tu usuario y contraseña\./i)).toBeInTheDocument();
+  });
+
+  describe('errores del paso 1 que no son credenciales incorrectas', () => {
+    const submitCredentials = () => {
+      renderLogin();
+      fireEvent.change(screen.getByLabelText(/Usuario/i), { target: { value: 'admin' } });
+      fireEvent.change(screen.getByLabelText(/Contraseña/i), { target: { value: 'password123' } });
+      fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
+    };
+
+    it('un 401 sigue diciendo que las credenciales son inválidas', async () => {
+      mockLoginStep1.mockRejectedValueOnce(httpError(401, { message: 'Credenciales inválidas.' }));
+      submitCredentials();
+      expect(await screen.findByText(/Credenciales inválidas\. Verificá tu usuario y contraseña\./i)).toBeInTheDocument();
+    });
+
+    it('un 429 dice cuánto esperar y no acusa a las credenciales', async () => {
+      mockLoginStep1.mockRejectedValueOnce(httpError(429, { message: 'ThrottlerException: Too Many Requests' }, { 'retry-after': '42' }));
+      submitCredentials();
+      expect(await screen.findByText(/Probá de nuevo en 42 segundos/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Credenciales inválidas/i)).not.toBeInTheDocument();
+    });
+
+    it('sin conexión con el servidor lo dice', async () => {
+      mockLoginStep1.mockRejectedValueOnce(new AxiosError('Network Error', 'ERR_NETWORK'));
+      submitCredentials();
+      expect(await screen.findByText(/No se pudo conectar con el servidor/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Credenciales inválidas/i)).not.toBeInTheDocument();
+    });
+
+    it('un 500 dice que es un problema del servidor', async () => {
+      mockLoginStep1.mockRejectedValueOnce(httpError(500, { message: 'Internal server error' }));
+      submitCredentials();
+      expect(await screen.findByText(/problema del servidor/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Credenciales inválidas/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('errores del paso de 2FA', () => {
+    const goToValidate2fa = async () => {
+      mockLoginStep1.mockImplementationOnce(async () => {
+        useAuthStore.setState({ pendingToken: 'pt-validate' });
+        return { pending_token: 'pt-validate', requires_2fa_setup: false };
+      });
+      const { container } = renderLogin();
+      fireEvent.change(screen.getByLabelText(/Usuario/i), { target: { value: 'admin' } });
+      fireEvent.change(screen.getByLabelText(/Contraseña/i), { target: { value: 'password123' } });
+      fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
+      expect(await screen.findByText(/Verificación en dos pasos/i)).toBeInTheDocument();
+      const pinInputs = container.querySelectorAll('input');
+      '123456'.split('').forEach((digit, idx) => fireEvent.change(pinInputs[idx], { target: { value: digit } }));
+      fireEvent.click(screen.getByRole('button', { name: /Verificar e ingresar/i }));
+    };
+
+    it('un 429 vuelve a las credenciales con el aviso en español, no con el texto técnico', async () => {
+      mockValidate2fa.mockRejectedValueOnce(httpError(429, { message: 'ThrottlerException: Too Many Requests' }, { 'retry-after': '120' }));
+      await goToValidate2fa();
+      expect(await screen.findByText(/Probá de nuevo en 2 minutos/i)).toBeInTheDocument();
+      expect(screen.queryByText(/ThrottlerException/i)).not.toBeInTheDocument();
+      expect(await screen.findByText(/Iniciar sesión/i)).toBeInTheDocument();
+    });
+
+    it('un 503 muestra el mensaje del servidor y no dice que el código es incorrecto', async () => {
+      mockValidate2fa.mockRejectedValueOnce(httpError(503, { message: 'El servicio de autenticación no está disponible. Intentá de nuevo.' }));
+      await goToValidate2fa();
+      expect(await screen.findByText(/El servicio de autenticación no está disponible/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Código incorrecto/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/Verificación en dos pasos/i)).toBeInTheDocument(); // no se pierde el paso
+    });
   });
 
   it('debería avanzar a setup_2fa cuando requires_2fa_setup es true y permitir confirmar', async () => {

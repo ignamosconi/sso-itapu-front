@@ -154,6 +154,14 @@ describe('CargarUsuariosPage', () => {
       await screen.findByText(/Formato no válido\. Solo se permiten archivos de Excel/i),
     ).toBeInTheDocument();
 
+    // 2b. Archivo Excel de más de 5 MB: se rechaza en el navegador, sin subirlo
+    const hugeFile = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'enorme.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    fireEvent.change(fileInput, { target: { files: [hugeFile] } });
+    expect(await screen.findByText(/El archivo supera el máximo de 5 MB/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Previsualizar/i })).toBeDisabled();
+
     // 3. Archivo Excel válido (.xlsx)
     const validFile = new File(['dummy-xlsx'], 'padron_2026.xlsx', {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

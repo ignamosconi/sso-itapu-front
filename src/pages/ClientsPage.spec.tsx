@@ -5,6 +5,7 @@ import { ClientsPage } from './ClientsPage';
 import { oauthClientsApi } from '@/api/adminApi';
 import { studentsApi } from '@/api/studentsApi';
 import { OAuthClientResponse } from '@/types/api.types';
+import { AxiosError, AxiosHeaders } from 'axios';
 const { firstOnChangeSpy } = vi.hoisted(() => ({ firstOnChangeSpy: vi.fn() }));
 // ── Mock: Select searchable ───────────────────────────────────────────
 // Mantine v7 Combobox usa Transition + Popover internamente.
@@ -349,7 +350,7 @@ describe('ClientsPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Nuevo cliente/i }));
 
     const appNameInput = await screen.findByLabelText(/Nombre de la app/i);
-    const uriInput = screen.getByPlaceholderText('http://localhost:4000/callback');
+    const uriInput = screen.getByPlaceholderText('https://miapp.com/callback');
 
     fireEvent.change(appNameInput, { target: { value: 'Torneito App' } });
     fireEvent.change(uriInput, { target: { value: 'http://localhost:4000/callback' } });
@@ -380,6 +381,33 @@ describe('ClientsPage', () => {
     await waitFor(() => {
       expect(screen.queryByText(/Credenciales enviadas a/i)).not.toBeInTheDocument();
     });
+  });
+
+  it('muestra el motivo real cuando el servidor rechaza una redirect URI (llega como array)', async () => {
+    vi.mocked(oauthClientsApi.findAll).mockResolvedValue([]);
+    vi.mocked(studentsApi.findAll).mockResolvedValue({ data: mockStudents, total: 1 });
+    const config = { headers: new AxiosHeaders() };
+    vi.mocked(oauthClientsApi.create).mockRejectedValueOnce(
+      new AxiosError('fail', 'ERR_BAD_REQUEST', config, {}, {
+        status: 400, statusText: '', headers: {}, config,
+        data: { message: ['La redirect URI «http://localhost:3000» no puede apuntar a localhost en producción.'] },
+      }),
+    );
+
+    renderClients();
+    fireEvent.click(await screen.findByRole('button', { name: /Nuevo cliente/i }));
+
+    const appNameInput = await screen.findByLabelText(/Nombre de la app/i);
+    fireEvent.change(appNameInput, { target: { value: 'Torneito App' } });
+    fireEvent.change(screen.getByPlaceholderText('https://miapp.com/callback'), { target: { value: 'http://localhost:3000' } });
+    const responsibleInput = await screen.findByPlaceholderText(/Buscar por username o nombre/i);
+    fireEvent.change(responsibleInput, { target: { value: 'jdoe' } });
+    fireEvent.click(await screen.findByRole('option', { name: /jdoe/i }));
+    fireEvent.submit(appNameInput.closest('form')!);
+
+    expect(await screen.findByText(/no puede apuntar a localhost en producción/i)).toBeInTheDocument();
+    expect(screen.queryByText(/debe ser un texto/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Nombre de la app/i)).toBeInTheDocument(); // el formulario sigue abierto
   });
 
   it('debería editar un cliente existente (nombre)', async () => {

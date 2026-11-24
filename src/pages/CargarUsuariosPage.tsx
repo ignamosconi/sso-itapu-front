@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { getErrorMessage } from '@/utils/apiError';
 import {
   Box, Title, Text, Tabs, TextInput, Button,
   Select, Alert, Paper, Table, Badge, Group, FileButton,
@@ -10,6 +11,8 @@ import { specialtiesApi } from '@/api/specialtiesApi';
 import { DomainRoleResponse, SpecialtyResponse, ImportPreviewResult } from '@/types/api.types';
 
 const ALLOWED_EXTENSIONS = ['.xlsx', '.xls', '.ods'];
+// Mismos topes que el backend: más de 5 MB o 500 alumnos por archivo se rechaza.
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = [
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
   'application/vnd.ms-excel', // .xls
@@ -62,9 +65,7 @@ export function CargarUsuariosPage() {
       setIFirstName(''); setILastName(''); setIDni(''); setIEmail('');
       setIBirthDate(''); setIRoleId(null); setISpecId(null);
     } catch (err) {
-      const ax = err as { response?: { data?: { message?: string | string[] } } };
-      const msg = ax?.response?.data?.message;
-      setIError(Array.isArray(msg) ? msg.join(' ') : (msg ?? 'Error al crear el usuario.'));
+      setIError(getErrorMessage(err, 'Error al crear el usuario.'));
     } finally { setILoading(false); }
   };
 
@@ -88,6 +89,13 @@ export function CargarUsuariosPage() {
       return;
     }
 
+    if (file.size > MAX_FILE_BYTES) {
+      setCsvFile(null);
+      resetFileRef.current?.();
+      setPreviewError('El archivo supera el máximo de 5 MB.');
+      return;
+    }
+
     setPreviewError(null);
     setCsvFile(file);
   };
@@ -98,8 +106,7 @@ export function CargarUsuariosPage() {
     try {
       setPreview(await studentsApi.importPreview(csvFile));
     } catch (err) {
-      const ax = err as { response?: { data?: { message?: string } } };
-      setPreviewError(ax?.response?.data?.message ?? 'Error al procesar el archivo.');
+      setPreviewError(getErrorMessage(err, 'Error al procesar el archivo.'));
     } finally { setPreviewLoading(false); }
   };
 
@@ -119,15 +126,14 @@ export function CargarUsuariosPage() {
       setCsvFile(null);
       resetFileRef.current?.();
     } catch (err) {
-      const ax = err as { response?: { data?: { message?: string } } };
-      setPreviewError(ax?.response?.data?.message ?? 'Error al confirmar la importación.');
+      setPreviewError(getErrorMessage(err, 'Error al confirmar la importación.'));
     } finally { setConfirmLoading(false); }
   };
 
   return (
     <Box>
       <Title order={2} mb={4}>Cargar usuarios</Title>
-      <Text c="dimmed" size="sm" mb="xl">Registrá nuevos usuarios de forma individual o mediante carga masiva por CSV.</Text>
+      <Text c="dimmed" size="sm" mb="xl">Registrá nuevos usuarios de forma individual o mediante carga masiva por Excel.</Text>
 
       <Tabs defaultValue="individual" variant="outline" radius="md">
         <Tabs.List mb="lg">
@@ -146,8 +152,8 @@ export function CargarUsuariosPage() {
                 <TextInput label="Apellidos" placeholder="Mosconi" value={iLastName} onChange={e => setILastName(e.target.value)} required minLength={2} maxLength={64} />
               </Group>
               <Group grow mb="sm">
-                <TextInput label="DNI" placeholder="44244136" value={iDni} onChange={e => setIDni(e.target.value)} required />
-                <TextInput label="Email" type="email" placeholder="alumno@gmail.com" value={iEmail} onChange={e => setIEmail(e.target.value)} required />
+                <TextInput label="DNI" placeholder="44244136" value={iDni} onChange={e => setIDni(e.target.value)} required inputMode="numeric" maxLength={10} />
+                <TextInput label="Email" type="email" placeholder="alumno@gmail.com" value={iEmail} onChange={e => setIEmail(e.target.value)} required maxLength={254} />
               </Group>
               <TextInput label="Fecha de nacimiento" type="date" value={iBirthDate} onChange={e => setIBirthDate(e.target.value)} mb="sm" required />
               <Group grow mb="lg">
@@ -186,6 +192,7 @@ export function CargarUsuariosPage() {
               El archivo debe tener las columnas: <code>Nombre/s, Apellido/s, DNI, Email, Fecha de nacimiento, Cargo, Especialidad</code>.
               Las fechas se cargan como fechas normales de Excel (DD/MM/AAAA). Los valores de <strong>Cargo</strong> y <strong>Especialidad</strong>
               deben coincidir exactamente con los cargados en el sistema — el Excel de ejemplo los lista en la parte inferior de la planilla.
+              Máximo <strong>500 alumnos</strong> y <strong>5 MB</strong> por archivo: si tenés más, dividilo en partes.
             </Text>
 
             {previewError && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{previewError}</Alert>}

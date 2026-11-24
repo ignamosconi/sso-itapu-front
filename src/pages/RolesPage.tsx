@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getErrorMessage } from '@/utils/apiError';
 import { includesNormalized } from '@/utils/normalizeText';
 import {
   Box, Title, Text, Button, Table, ActionIcon, Group,
@@ -49,8 +50,7 @@ export function RolesPage() {
       setModalOpen(false); setFormName('');
       await load(true);
     } catch (err) {
-      const ax = err as { response?: { data?: { message?: string } } };
-      setFormError(ax?.response?.data?.message ?? 'Error al crear el cargo.');
+      setFormError(getErrorMessage(err, 'Error al crear el cargo.'));
     } finally { setFormLoading(false); }
   };
 
@@ -62,8 +62,7 @@ export function RolesPage() {
       setDeleteModal(false); setDeleteTarget(null);
       await load(true);
     } catch (err) {
-      const ax = err as { response?: { data?: { message?: string } } };
-      setError(ax?.response?.data?.message ?? 'Error al eliminar el cargo.');
+      setError(getErrorMessage(err, 'Error al eliminar el cargo.'));
       setDeleteModal(false);
     } finally { setDeleteLoading(false); }
   };

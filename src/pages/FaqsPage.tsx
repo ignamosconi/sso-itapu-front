@@ -60,18 +60,25 @@ export function FaqsPage() {
                 <List.Item>Andá a <strong>Clientes OAuth</strong> en el menú lateral.</List.Item>
                 <List.Item>Hacé click en <strong>Nuevo cliente</strong>.</List.Item>
                 <List.Item>
-                  Completá el nombre de la app y las redirect URIs. Podés cargar localhost para
-                  desarrollo y la URL de producción. Las URIs deben empezar con{' '}
-                  <Code>http://</Code> (debe usarse solo para localhost) o <Code>https://</Code>. 
+                  Completá el nombre de la app, las redirect URIs (hasta 5) y elegí el{' '}
+                  <strong>usuario responsable</strong>: un alumno activo, que es quien recibe las credenciales por email.
                 </List.Item>
                 <List.Item>
-                  El sistema genera el <Code>client_secret</Code> automáticamente. Para enviárselo
-                  al desarrollador, ingresá su email en el modal que aparece: recibirá un
-                  link de un solo uso válido por 24 horas con instrucciones completas de integración.
+                  Las redirect URIs deben usar <Code>https://</Code>. Se acepta <Code>http://</Code> solo para{' '}
+                  <Code>localhost</Code>, <Code>127.0.0.1</Code> o <Code>[::1]</Code> (desarrollo). No se permiten
+                  comodines (<Code>*</Code>), usuario y contraseña en la URL ni fragmentos (<Code>#</Code>). En
+                  producción el servidor rechaza también las de localhost, salvo que quien administra el sistema
+                  defina <Code>ALLOW_LOCALHOST_REDIRECTS=true</Code> en el <Code>.env</Code> del backend.
                 </List.Item>
                 <List.Item>
-                  Si necesitás reenviar las credenciales más adelante, regenerá el secret desde la
-                  tabla de clientes y volvé a enviar el email.
+                  El sistema genera el <Code>client_secret</Code> automáticamente y no se muestra en pantalla. En el
+                  modal que aparece, hacé click en <strong>Enviar credenciales por email</strong>: el responsable
+                  recibe un link de un solo uso (válido 24 horas por defecto) con sus credenciales y las instrucciones
+                  de integración.
+                </List.Item>
+                <List.Item>
+                  Si necesitás reenviar las credenciales más adelante, regenerá el secret desde la tabla de clientes y
+                  volvé a enviar el email. Cambiar el responsable de una app también regenera el secret.
                 </List.Item>
               </List>
             </Accordion.Panel>
@@ -110,11 +117,13 @@ export function FaqsPage() {
                 <List.Item>
                   <Text size="sm" fw={500}>1. Abrí el popup de login</Text>
                   <Code block mt={4}>
-                    {`const state = crypto.randomUUID();\nsessionStorage.setItem('oauth_state', state);\n\nwindow.open(\n  '${ssoUrl}/sso/login' +\n  '?client_id=TU_ID' +\n  '&redirect_uri=TU_URI' +\n  '&state=' + state +\n  '&theme=dark',    // o theme=light\n  'sso-login',\n  'width=480,height=560'\n);`}
+                    {`const state = crypto.randomUUID();\nsessionStorage.setItem('oauth_state', state);\n\nwindow.open(\n  '${ssoUrl}/sso/login' +\n  '?client_id=TU_ID' +\n  '&redirect_uri=' + encodeURIComponent('TU_URI') +\n  '&state=' + state +\n  '&theme=dark',    // o theme=light\n  'sso-login',\n  'width=480,height=560'\n);`}
                   </Code>
                   <Text size="xs" c="dimmed" mt={4}>
-                    El popup pide usuario y contraseña en dos pasos. Si el usuario no configuró
-                    contraseña todavía, el SSO le envía un email automáticamente.
+                    El popup pide usuario y contraseña y le muestra a la persona a qué sitio va a volver (<Code>Vas a volver a: …</Code>).
+                    Si nunca configuró su contraseña o la olvidó, usa el botón «Es mi primera vez / Olvidé mi contraseña»,
+                    que le envía un correo con un link (un pedido cada 5 minutos). Tras 5 contraseñas incorrectas en
+                    15 minutos, la cuenta se bloquea 15 minutos.
                   </Text>
                 </List.Item>
 
@@ -128,28 +137,28 @@ export function FaqsPage() {
                 <List.Item>
                   <Text size="sm" fw={500}>3. Tu backend canjea el code por tokens</Text>
                   <Code block mt={4}>
-                    {`POST ${ssoUrl}/sso/token\n{\n  "client_id": "TU_ID",\n  "client_secret": "TU_SECRET",\n  "code": "EL_CODE",\n  "redirect_uri": "TU_URI"\n}\n// El code es de un solo uso y expira en 2 minutos`}
+                    {`POST ${ssoUrl}/sso/token\n{\n  "client_id": "TU_ID",\n  "client_secret": "TU_SECRET",\n  "code": "EL_CODE",\n  "redirect_uri": "TU_URI"\n}\n// El code es de un solo uso, expira en 2 minutos y solo se canjea con la\n// misma redirect_uri con la que se abrió el popup`}
                   </Code>
                 </List.Item>
 
                 <List.Item>
                   <Text size="sm" fw={500}>4. Identificá al usuario</Text>
                   <Code block mt={4}>
-                    {`GET ${ssoUrl}/sso/me\nAuthorization: Bearer ACCESS_TOKEN\n\n// Respuesta:\n// {\n//   "sub": "uuid",              ← ID único, usalo como clave en tu sistema\n//   "nombre": "Ignacio Mariano",\n//   "apellido": "Mosconi",\n//   "username": "immosconi136",\n//   "especialidad": "Sistemas", ← ver /sso/info/specialties\n//   "email": "...",\n//   "cargo": "Alumno"           ← ver /sso/info/domain-roles\n// }`}
+                    {`GET ${ssoUrl}/sso/me\nAuthorization: Bearer ACCESS_TOKEN\n\n// Respuesta:\n// {\n//   "sub": "uuid",              ← ID único, usalo como clave en tu sistema\n//   "nombre": "Ignacio Mariano",\n//   "apellido": "Mosconi",\n//   "username": "immosconi136",\n//   "especialidad": "Sistemas", ← ver /sso/info/specialties\n//   "email": "...",\n//   "cargo": "Alumno",          ← ver /sso/info/domain-roles\n//   "aud": "TU_ID"              ← tu client_id\n// }`}
                   </Code>
                 </List.Item>
 
                 <List.Item>
                   <Text size="sm" fw={500}>5. Renovar el access_token (expira cada 15 minutos)</Text>
                   <Code block mt={4}>
-                    {`POST ${ssoUrl}/sso/refresh\n{ "refresh_token": "TU_REFRESH_TOKEN" }\n\n// Respuesta: nuevo access_token Y nuevo refresh_token\n// IMPORTANTE: reemplazá AMBOS — el refresh anterior queda inválido\n// Si usás un refresh ya consumido, toda la sesión se revoca`}
+                    {`POST ${ssoUrl}/sso/refresh\n{\n  "client_id": "TU_ID",\n  "client_secret": "TU_SECRET",\n  "refresh_token": "TU_REFRESH_TOKEN"\n}\n\n// Se llama desde tu backend: lleva el client_secret\n// Respuesta: nuevo access_token Y nuevo refresh_token\n// IMPORTANTE: reemplazá AMBOS — el refresh anterior queda inválido\n// Si usás un refresh ya consumido, toda la sesión se revoca\n// (salvo un segundo uso a los pocos segundos del primero)\n// Si el alumno fue suspendido o eliminado, responde 401`}
                   </Code>
                 </List.Item>
 
                 <List.Item>
                   <Text size="sm" fw={500}>6. Cerrar sesión</Text>
                   <Code block mt={4}>
-                    {`POST ${ssoUrl}/sso/logout\n{ "refresh_token": "TU_REFRESH_TOKEN" }\n\n// También eliminá los tokens del almacenamiento de tu app`}
+                    {`POST ${ssoUrl}/sso/logout\n{\n  "client_id": "TU_ID",\n  "client_secret": "TU_SECRET",\n  "refresh_token": "TU_REFRESH_TOKEN"\n}\n\n// Desde tu backend. También eliminá los tokens del almacenamiento de tu app`}
                   </Code>
                 </List.Item>
               </List>
@@ -160,7 +169,8 @@ export function FaqsPage() {
                   <List.Item>Logout voluntario → tokens revocados en el servidor.</List.Item>
                   <List.Item>Inactividad de 8 horas sin usar el refresh_token.</List.Item>
                   <List.Item>Límite absoluto de 3 días desde el primer login.</List.Item>
-                  <List.Item>Reutilización de refresh_token usado → familia revocada al instante.</List.Item>
+                  <List.Item>Reutilización de un refresh_token ya usado (pasados unos segundos) → toda la sesión se revoca.</List.Item>
+                  <List.Item>Cambiar la contraseña, suspender o dar de baja al alumno cierra sus sesiones.</List.Item>
                 </List>
               </Alert>
             </Accordion.Panel>
@@ -179,7 +189,7 @@ export function FaqsPage() {
                 <List.Item>Producción: <Code>https://tu-app.com/callback</Code></List.Item>
               </List>
               <Text size="xs" c="dimmed" mt="sm">
-                La redirect_uri que uses en el popup debe coincidir exactamente con una de las registradas.
+                La redirect_uri que uses en el popup debe coincidir exactamente con una de las registradas. Las de localhost son solo para desarrollo: en producción el servidor no deja registrarlas, salvo que se habilite <Code>ALLOW_LOCALHOST_REDIRECTS</Code>.
               </Text>
             </Accordion.Panel>
           </Accordion.Item>
@@ -245,7 +255,7 @@ export function FaqsPage() {
               <List size="sm" spacing="xs">
                 <List.Item>Andá a <strong>Usuarios → Cargar usuarios → Carga masiva</strong>.</List.Item>
                 <List.Item>Descargá el Excel de ejemplo — incluye los cargos y especialidades válidos en las columnas I y J.</List.Item>
-                <List.Item>Completá el archivo y subilo. Se muestra un preview con errores por fila antes de confirmar.</List.Item>
+                <List.Item>Completá el archivo y subilo (máximo 500 alumnos y 5 MB por archivo: si tenés más, dividilo en partes). Se muestra un preview con errores por fila antes de confirmar.</List.Item>
                 <List.Item>Al confirmar, se importan solo las filas válidas y se envían emails de bienvenida a cada usuario.</List.Item>
               </List>
             </Accordion.Panel>
@@ -332,6 +342,83 @@ export function FaqsPage() {
             </Accordion.Panel>
           </Accordion.Item>
 
+          <Accordion.Item value="no-puede-ingresar">
+            <Accordion.Control icon={<IconHelp size={16} />}>
+              Un alumno dice que no puede iniciar sesión en una app. ¿Qué reviso?
+            </Accordion.Control>
+            <Accordion.Panel>
+              <List size="sm" spacing="xs">
+                <List.Item>
+                  El popup responde siempre <em>«Usuario o contraseña incorrectos.»</em>, exista o no el usuario y esté
+                  o no pendiente: así no revela qué usuarios existen. Solo si la contraseña es correcta y la cuenta está
+                  suspendida avisa que está suspendida.
+                </List.Item>
+                <List.Item>
+                  Con <strong>5 contraseñas incorrectas en 15 minutos</strong> (valores por defecto) la cuenta se bloquea
+                  15 minutos, aunque después se ingrese la correcta. El bloqueo vence solo.
+                </List.Item>
+                <List.Item>
+                  Si nunca configuró su contraseña (estado <strong>Pendiente</strong>) o la olvidó, tiene que usar el
+                  botón <em>«Es mi primera vez / Olvidé mi contraseña»</em> del popup: le llega un correo con un link.
+                  Se puede pedir uno cada 5 minutos y solo el último link sirve.
+                </List.Item>
+                <List.Item>
+                  Revisá en <strong>Usuarios → Padrón</strong> que no esté suspendido y en <strong>Clientes OAuth</strong> que
+                  la app tampoco lo esté.
+                </List.Item>
+                <List.Item>
+                  Para levantar un bloqueo antes de que venza, quien administra el servidor puede borrar la clave{' '}
+                  <Code>sso:login-attempts:usuario</Code> (usuario en minúsculas) de Redis.
+                </List.Item>
+              </List>
+            </Accordion.Panel>
+          </Accordion.Item>
+
+          <Accordion.Item value="link-contrasena">
+            <Accordion.Control icon={<IconHelp size={16} />}>
+              Un usuario dice que el link para crear su contraseña no funciona. ¿Qué hago?
+            </Accordion.Control>
+            <Accordion.Panel>
+              <List size="sm" spacing="xs">
+                <List.Item>
+                  El link es de <strong>un solo uso</strong> y vence a las 24 horas por defecto. Si pidió varios correos,
+                  <strong> solo el último</strong> sirve.
+                </List.Item>
+                <List.Item>
+                  La contraseña debe tener al menos 8 caracteres y como máximo 72 bytes (unos 72 caracteres; las tildes y la
+                  ñ cuentan doble). Si el servidor la rechaza, la página muestra el motivo y se puede corregir sin pedir
+                  otro link.
+                </List.Item>
+                <List.Item>
+                  Si la página dice que el link ya fue usado o venció, la persona tiene que pedir otro desde el popup con
+                  <em> «Es mi primera vez / Olvidé mi contraseña»</em>, o vos podés reenviar el correo de bienvenida desde{' '}
+                  <strong>Usuarios → Padrón</strong> si su estado es Pendiente.
+                </List.Item>
+              </List>
+            </Accordion.Panel>
+          </Accordion.Item>
+
+          <Accordion.Item value="peticiones-rapidas">
+            <Accordion.Control icon={<IconShieldCheck size={16} />}>
+              El panel me dice que estoy haciendo peticiones demasiado rápido. ¿Qué pasa?
+            </Accordion.Control>
+            <Accordion.Panel>
+              <List size="sm" spacing="xs">
+                <List.Item>
+                  Es un límite del servidor por dirección IP. El aviso indica cuánto esperar y alcanza con esperar ese tiempo.
+                </List.Item>
+                <List.Item>
+                  El inicio de sesión del panel admite 5 intentos por minuto, y los pasos del autenticador 2FA 5 cada
+                  15 minutos. Dentro del panel, las demás acciones admiten 300 peticiones por minuto.
+                </List.Item>
+                <List.Item>
+                  Si varias personas comparten la misma IP (por ejemplo, la red del colegio) pueden llegar al límite entre
+                  todas. Avisale a quien administra el servidor.
+                </List.Item>
+              </List>
+            </Accordion.Panel>
+          </Accordion.Item>
+
           <Accordion.Item value="secret-perdido">
             <Accordion.Control icon={<IconHelp size={16} />}>
               Un desarrollador perdió el client_secret de su app. ¿Qué hago?
@@ -396,6 +483,18 @@ export function FaqsPage() {
               <List size="sm" spacing="xs">
                 <List.Item>Cloná el repo: <Code>git clone https://github.com/ignamosconi/sso-itapu-back.git</Code></List.Item>
                 <List.Item>Copiá <Code>.env.example</Code> a <Code>.env</Code> y completá todos los valores.</List.Item>
+                <List.Item>
+                  Definí <Code>DB_PASSWORD</Code> y <Code>REDIS_PASSWORD</Code>: el <Code>docker-compose.yml</Code> los
+                  exige y deja Postgres y Redis accesibles solo desde la propia máquina.
+                </List.Item>
+                <List.Item>
+                  Dejá <Code>AUTH_ROUTE_PATH=sso</Code>: es el prefijo que usa este panel (<Code>/sso/set-password</Code>,{' '}
+                  <Code>/sso/confirm-email-change</Code>).
+                </List.Item>
+                <List.Item>
+                  Con <Code>NODE_ENV=production</Code> el servidor no arranca si algún secret es el del ejemplo, si los
+                  secrets JWT tienen menos de 64 caracteres o si dos de ellos son iguales.
+                </List.Item>
                 <List.Item>Corré <Code>npm install</Code>.</List.Item>
                 <List.Item>Levantá la base de datos y Redis: <Code>docker compose up -d</Code></List.Item>
                 <List.Item>Levantá el servidor: <Code>npm run start:dev</Code> (las migraciones corren automáticamente).</List.Item>
@@ -415,8 +514,12 @@ export function FaqsPage() {
               <List size="sm" spacing="xs">
                 <List.Item>Cloná el repo: <Code>git clone https://github.com/ignamosconi/sso-itapu-front.git</Code></List.Item>
                 <List.Item>Copiá <Code>.env.example</Code> a <Code>.env</Code> y verificá que <Code>VITE_API_BASE_URL</Code> apunte al backend.</List.Item>
-                <List.Item>Corré <Code>npm install</Code>.</List.Item>
+                <List.Item>Corré <Code>npm ci</Code>.</List.Item>
                 <List.Item>Corré <Code>npm run dev</Code> para desarrollo o <Code>npm run build</Code> para producción.</List.Item>
+                <List.Item>
+                  <Code>VITE_API_BASE_URL</Code> se usa al hacer el build y también define la política de seguridad del
+                  navegador (CSP): si cambia la URL del backend, hay que volver a construir el panel.
+                </List.Item>
               </List>
             </Accordion.Panel>
           </Accordion.Item>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getErrorMessage } from '@/utils/apiError';
 import {
   Box, Title, Text, Button, Table, Group,
   TextInput, PasswordInput, Alert, Loader,
@@ -83,8 +84,7 @@ export function AdminsPage() {
       setCreateModalOpen(false);
       await load(true);
     } catch (err) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setFormError(axiosError?.response?.data?.message ?? 'Error al crear el administrador.');
+      setFormError(getErrorMessage(err, 'Error al crear el administrador.'));
     } finally {
       setFormLoading(false);
     }
@@ -196,6 +196,7 @@ export function AdminsPage() {
             mb="lg"
             required
             minLength={8}
+            maxLength={128}
           />
           <Button
             type="submit"
