@@ -11,8 +11,10 @@ import {
 } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/authStore';
+import { getErrorMessage, isNetworkError, serverMessage } from '@/utils/apiError';
+import { getRateLimitInfo } from '@/utils/rateLimit';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import logoUtn from '@/assets/logo-utn.png';
+import logoItapu from '@/assets/logo-itapu.png';
 import type { Admin2faSetupResponse } from '@/types/api.types';
 
 type LoginStep = 'credentials' | 'setup_2fa' | 'validate_2fa';
@@ -70,10 +72,13 @@ export function LoginPage() {
     }, 50);
   };
 
-  // Extrae el mensaje de error de una respuesta Axios
-  const extractErrorMessage = (err: unknown): string => {
-    const axiosErr = err as { response?: { data?: { message?: string } } };
-    return axiosErr?.response?.data?.message ?? '';
+  // Extrae el mensaje de error de una respuesta Axios (siempre como texto: en las validaciones llega como array)
+  const extractErrorMessage = (err: unknown): string => serverMessage(err);
+
+  // El servidor no pudo atender el pedido (sin conexión o error 5xx): no tiene que ver con las credenciales ni con el código.
+  const isServiceProblem = (err: unknown): boolean => {
+    const status = (err as { response?: { status?: number } } | null)?.response?.status;
+    return isNetworkError(err) || (status !== undefined && status >= 500);
   };
 
   // Errores que invalidan el challenge actual — el usuario debe volver
@@ -127,8 +132,13 @@ export function LoginPage() {
       } else {
         setStep('validate_2fa');
       }
-    } catch {
-      setError('Credenciales inválidas. Verificá tu usuario y contraseña.');
+    } catch (err) {
+      // Un 429 (demasiados intentos) o una falla del servidor no significan que las credenciales sean incorrectas.
+      if (getRateLimitInfo(err) || isServiceProblem(err)) {
+        setError(getErrorMessage(err, 'No se pudo iniciar sesión por un problema del servidor. Intentá de nuevo en unos minutos.'));
+      } else {
+        setError('Credenciales inválidas. Verificá tu usuario y contraseña.');
+      }
     } finally {
       setLoading(false);
     }
@@ -148,9 +158,11 @@ export function LoginPage() {
       await confirm2fa(setupData.confirm_pending_token, totpCode);
     } catch (err) {
       const message = extractErrorMessage(err);
-      if (isFatalAuthError(message)) {
+      if (isFatalAuthError(message) || getRateLimitInfo(err)) {
         goBackToCredentials();
-        setError(message);
+        setError(getRateLimitInfo(err) ? getErrorMessage(err, message) : message);
+      } else if (isServiceProblem(err)) {
+        setError(getErrorMessage(err, 'No se pudo verificar el código por un problema del servidor. Intentá de nuevo.'));
       } else {
         setError('Código incorrecto. Verificá que el autenticador esté sincronizado e intentá de nuevo.');
         resetTotpInput();
@@ -174,9 +186,11 @@ export function LoginPage() {
       await validate2fa(pendingToken, totpCode);
     } catch (err) {
       const message = extractErrorMessage(err);
-      if (isFatalAuthError(message)) {
+      if (isFatalAuthError(message) || getRateLimitInfo(err)) {
         goBackToCredentials();
-        setError(message);
+        setError(getRateLimitInfo(err) ? getErrorMessage(err, message) : message);
+      } else if (isServiceProblem(err)) {
+        setError(getErrorMessage(err, 'No se pudo verificar el código por un problema del servidor. Intentá de nuevo.'));
       } else {
         setError('Código incorrecto. Intentá de nuevo con el código actual de tu autenticador.');
         resetTotpInput();
@@ -222,8 +236,8 @@ export function LoginPage() {
       >
         <Group justify="space-between" align="center" mb="xs">
           <Group gap="xs">
-            <Image src={logoUtn} w={32} h={32} fit="contain" />
-            <Text fw={600} size="sm">UTN FRVM</Text>
+            <Image src={logoItapu} w={32} h={32} fit="contain" />
+            <Text fw={600} size="sm">SSO ITAPU</Text>
           </Group>
           <ThemeToggle />
         </Group>
@@ -276,7 +290,6 @@ export function LoginPage() {
                 type="submit"
                 fullWidth
                 loading={loading}
-                style={{ background: '#f5a705', color: '#1a1200' }}
               >
                 Continuar
               </Button>
@@ -289,7 +302,7 @@ export function LoginPage() {
           <>
             <Title order={3} mb={4} mt="sm">Configurar autenticador</Title>
 
-            <Alert icon={<IconShieldCheck size={16} />} color="orange" mb="md" radius="md">
+            <Alert icon={<IconShieldCheck size={16} />} color="itapu" mb="md" radius="md">
               <Text size="sm" fw={500}>
                 Descargá <strong>Google Authenticator</strong> u otra app de autenticación para continuar.
               </Text>
@@ -392,7 +405,6 @@ export function LoginPage() {
                 fullWidth
                 loading={loading}
                 disabled={totpCode.length !== 6}
-                style={{ background: '#f5a705', color: '#1a1200' }}
                 mb="xs"
               >
                 Activar autenticador e ingresar
@@ -440,7 +452,6 @@ export function LoginPage() {
                 fullWidth
                 loading={loading}
                 disabled={totpCode.length !== 6}
-                style={{ background: '#f5a705', color: '#1a1200' }}
                 mb="xs"
               >
                 Verificar e ingresar

@@ -1,31 +1,38 @@
-# SSO FRVM Admin - Frontend
+# SSO ITAPU — Panel de administración
 
-Panel de administración web para el sistema SSO de UTN FRVM. Permite gestionar administradores del sistema, registrar y administrar aplicaciones cliente OAuth, y monitorear el estado de los servicios.
-
+Panel de administración web para el sistema SSO de ITAPU. Permite gestionar el padrón de usuarios, cargos, especialidades, aplicaciones OAuth y administradores del sistema.
 
 ## ¿Qué hace este repositorio?
 
 Provee la interfaz gráfica para que los administradores del SSO puedan:
 
 - Iniciar sesión con autenticación de dos factores (TOTP) obligatoria.
-- Gestionar otros administradores del sistema (crear, listar, eliminar).
-- Registrar aplicaciones cliente OAuth (crear, editar, suspender, activar, eliminar).
-- Regenerar client secrets y enviarlos al desarrollador por email mediante un link de un solo uso.
-- Monitorear en tiempo real el estado del backend SSO y del servicio de Autogestión UTN.
-- Actualizar su propio perfil y resetear el autenticador 2FA.
+- Gestionar el **padrón de usuarios**: alta individual, carga masiva por Excel, edición, suspensión, baja y reenvío de email de bienvenida.
+- Configurar **cargos institucionales** y **especialidades** disponibles en el sistema.
+- Gestionar **administradores** del panel (crear, listar, eliminar).
+- Registrar y gestionar **aplicaciones cliente OAuth** (crear, editar, suspender, activar, eliminar, regenerar secret, enviar credenciales por email).
+- Ver **estadísticas** del sistema: apps integradas, usuarios registrados, pendientes de activación y distribución por especialidad.
+- Monitorear el estado del backend SSO.
+- Actualizar el propio perfil, cambiar contraseña y resetear el autenticador 2FA.
+
+Además, incluye dos páginas públicas que abren los usuarios desde un email, con token de un solo uso y modo claro/oscuro:
+
+- Configurar la contraseña de una cuenta nueva (`/set-password`).
+- Confirmar un cambio de email (`/confirm-email`).
+
 
 ## Tecnologías utilizadas
 
 | Categoría | Tecnología |
 |-----------|-----------|
 | Framework | React 19 |
-| Lenguaje | TypeScript 6 |
-| Build tool | Vite 8 |
+| Lenguaje | TypeScript |
+| Build tool | Vite |
 | UI | Mantine 9 |
 | Íconos | Tabler Icons React |
 | HTTP | Axios |
 | Routing | React Router DOM 7 |
-| Estado global | Zustand 5 |
+| Estado global | Zustand |
 | Tests | Vitest + Testing Library |
 | Lint | oxlint |
 
@@ -33,145 +40,185 @@ Provee la interfaz gráfica para que los administradores del SSO puedan:
 ## Requisitos previos
 
 - Node.js 22+
-- El backend `sso-frvm` corriendo y accesible
+- El backend `sso-itapu-back` corriendo y accesible, con `AUTH_ROUTE_PATH=sso` (es el valor de su `.env.example`): este panel llama a `/sso/set-password`, `/sso/validate-reset-token` y `/sso/confirm-email-change`.
 
 
 ## Instalación y configuración
 
-### 1. Clonar el repositorio
-
 ```bash
-git clone https://github.com/ignamosconi/sso-frvm-admin.git
-cd sso-frvm-admin
-```
-
-### 2. Instalar dependencias
-
-```bash
-npm install
-```
-
-### 3. Configurar variables de entorno
-
-```bash
+git clone https://github.com/ignamosconi/sso-itapu-front.git
+cd sso-itapu-front
+npm ci
 cp .env.example .env
 ```
 
-Editá el `.env` con los valores correctos:
-
 | Variable | Descripción | Ejemplo |
 |----------|-------------|---------|
-| `VITE_API_BASE_URL` | URL base del backend SSO, sin barra final. Se embebe en el bundle de producción. | `http://localhost:3000` |
-| `VITE_AUTOGESTION_URL` | URL pública del webservice de Autogestión UTN. Usada para el health check del dashboard. | `https://webservice.frvm.utn.edu.ar/autogestion` |
+| `VITE_API_BASE_URL` | URL base del backend SSO, sin barra final. | `http://localhost:3000` |
 
-> Las variables con prefijo `VITE_` son públicas y quedan embebidas en el bundle de producción. No pongas secretos acá.
+> Las variables con prefijo `VITE_` quedan embebidas en el bundle de producción. No pongas secretos acá.
+>
+> `VITE_API_BASE_URL` se lee **al hacer el build** y además se escribe en la política de seguridad del navegador (CSP, `connect-src` de `index.html`). Si cambia la URL del backend hay que volver a construir el panel.
+
+`npm ci` instala exactamente lo que dice `package-lock.json`. Para actualizar dependencias usá `npm install <paquete>@<versión>`; si npm 10 falla con `Cannot read properties of null (reading 'edgesOut')`, usá `npx npm@11 install`.
+
+
+## Tema y estilos
+
+- El tema de Mantine está en `src/theme.ts`: paleta `itapu` basada en el violeta del logo (`#422774`). En modo claro los botones usan ese tono; en modo oscuro, uno más luminoso (`#7650B3`) para que se distingan del fondo.
+- Modo claro: fondo crema (`#FEF8F1`), tarjetas blancas y tablas con filas alternas. Estos ajustes están en `src/index.css`.
+- Las páginas que abren los usuarios desde un email (`/set-password`, `/confirm-email`) comparten el marco `src/components/layout/UserPageLayout.tsx`: logo, tarjeta y selector de tema. Arrancan en modo claro, igual que los emails, si la persona nunca eligió un tema.
+- Para cambiar el color de los botones y acentos de todo el panel, editá solo `src/theme.ts`. No uses `style={{ background: ... }}` en cada botón.
 
 
 ## Comandos disponibles
 
 ```bash
-# Levantar en modo desarrollo con hot reload
-npm run dev
-
-# Build de producción (TypeScript + Vite)
-npm run build
-
-# Preview del build de producción localmente
-npm run preview
-
-# Lint
-npm run lint
-
-# Correr tests unitarios una vez
-npm run test
-
-# Correr tests en modo watch (re-corre al guardar)
-npm run test:watch
-
-# Correr tests con reporte de cobertura
-npm run test:cov
+npm run dev          # desarrollo con hot reload
+npm run build        # build de producción
+npm run preview      # preview del build localmente
+npm run lint         # lint
+npm run test         # tests unitarios
+npm run test:watch   # tests en modo watch
+npm run test:cov     # tests con cobertura
 ```
 
-## Flujo de autenticación
 
-El login está dividido en dos pasos obligatorios:
+## Rutas
+
+| Ruta | Descripción | Pública |
+|------|-------------|---------|
+| `/login` | Login de administradores | ✓ |
+| `/set-password?token=...` | Setup / reset de contraseña de usuarios | ✓ |
+| `/confirm-email?token=...` | Confirmación de cambio de email de un usuario | ✓ |
+| `/dashboard` | Estadísticas y health del sistema | — |
+| `/padron` | Tabla de usuarios con filtros y paginación | — |
+| `/padron/cargar` | Alta individual y carga masiva por Excel | — |
+| `/padron/roles` | CRUD de cargos institucionales | — |
+| `/padron/especialidades` | CRUD de especialidades | — |
+| `/admins` | Lista de administradores | — |
+| `/admins/me` | Perfil propio | — |
+| `/clients` | Clientes OAuth registrados | — |
+| `/faqs` | Documentación para admins y desarrolladores | — |
+
+
+## Flujo de autenticación de administradores
 
 ```
-Paso 1: POST /admin/auth/login
-  → Credenciales válidas → pending_token
+POST /admin/auth/login → pending_token
 
-  Si requires_2fa_setup = true (primera vez):
-    Paso 2a: POST /admin/auth/2fa/setup  → QR + manualEntrySecret + confirm_pending_token
-    Paso 3a: POST /admin/auth/2fa/confirm (con confirm_pending_token) → access_token + refresh_token
+Primera vez (requires_2fa_setup = true):
+  POST /admin/auth/2fa/setup   → QR + confirm_pending_token
+  POST /admin/auth/2fa/confirm → access_token + refresh_token
 
-  Si requires_2fa_setup = false (logins posteriores):
-    Paso 2b: POST /admin/auth/2fa/validate → access_token + refresh_token
+Logins posteriores:
+  POST /admin/auth/2fa/validate → access_token + refresh_token
 ```
-
-### Bootstrap de sesión
-
-Al cargar la app, si existe un `refreshToken` en `sessionStorage`, el sistema intenta recuperar la sesión automáticamente antes de renderizar cualquier UI protegida. Si el refresh falla, redirige al login sin mostrar contenido protegido.
 
 ### Almacenamiento de tokens
 
-| Token | Almacenamiento | Motivo |
-|-------|---------------|--------|
-| `accessToken` | Memoria (Zustand) | No persiste, se pierde al cerrar el tab |
+| Token | Dónde | Por qué |
+|-------|-------|---------|
+| `accessToken` | Memoria (Zustand) | No persiste al cerrar el tab |
 | `refreshToken` | `sessionStorage` | Persiste entre recargas, se borra al cerrar el tab |
-| `pendingToken` | Memoria (Zustand) | Token de vida corta, no necesita sobrevivir recargas |
-
-> `sessionStorage` fue elegido sobre `localStorage` porque no persiste entre tabs ni al cerrar el navegador, reduciendo la ventana de exposición del refresh token.
+| `pendingToken` | Memoria (Zustand) | Vida corta, no necesita sobrevivir recargas |
 
 ### Refresh automático y mutex
 
-El interceptor de Axios detecta respuestas `401` e intenta renovar el access token automáticamente. Un mutex garantiza que múltiples requests concurrentes que fallen con `401` al mismo tiempo solo disparen **un único refresh**, evitando race conditions.
+El interceptor de Axios detecta respuestas `401` e intenta renovar el access token automáticamente. Un mutex garantiza que múltiples requests concurrentes que fallen con `401` solo disparen **un único refresh**, evitando race conditions.
+
+
+## Seguridad
+
+El informe de la auditoría (hallazgos, cómo se verificaron y cómo se resolvió cada uno) está en [`SECURITY-AUDIT.md`](./SECURITY-AUDIT.md). Resumen de lo que hay que saber:
+
+- **Sesión del administrador.** El refresh token vive en `sessionStorage` y se borra al cerrar la pestaña. Es un riesgo conocido y aceptado: si algún día hubiera un XSS, un script podría leerlo. Se reduce con la CSP (`script-src 'self'`, sin scripts en línea) y porque el código no usa `dangerouslySetInnerHTML`, `innerHTML` ni `eval`: todo lo que viene del servidor se muestra como texto. Pasar a cookies `HttpOnly` exigiría cambios en el backend.
+- **Política de contenido (CSP).** Está en `index.html` (`<meta>`): solo scripts propios, conexiones solo al backend, sin `object`, `base` ni envío de formularios a otros sitios. También se pide `no-referrer` porque los links de los mails llevan un token en la URL. Los estilos en línea están permitidos porque Mantine los necesita.
+- **Encabezados HTTP.** Algunas protecciones **no se pueden poner en un `<meta>`**, como `frame-ancestors` (impide que otro sitio meta este panel en un `<iframe>`, el *clickjacking*). Tienen que ir como encabezados del hosting. El repo trae la configuración lista: `public/_headers` (Netlify y Cloudflare Pages) y `vercel.json` (Vercel). Usá el que corresponda y borrá el otro. Si el panel se sirve desde otro lado (Nginx, Apache), hay que agregar los mismos encabezados a mano: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy: camera=(), microphone=(), geolocation=()` y `Content-Security-Policy: frame-ancestors 'none'`. Además, comprobá en tu plataforma que HTTPS y HSTS estén activos.
+- **Errores del servidor.** `src/utils/apiError.ts` convierte cualquier error en un mensaje para mostrar: junta los mensajes de validación (que llegan como lista), traduce el 429 con el tiempo de espera y la caída de red, y no muestra textos técnicos de un 500. Las páginas lo usan en lugar de leer `response.data.message` directamente.
+- **Links de los mails.** `/set-password` y `/confirm-email` sacan el token de la URL apenas la página carga. En `/set-password`, los errores que se pueden corregir (contraseña inválida, límite de pedidos, caída de red) dejan el formulario abierto, porque con el token fuera de la URL perder el formulario obliga a pedir otro mail. Solo un link inexistente, usado, vencido o de una cuenta suspendida corta el flujo.
+- **Límites de los campos.** Los formularios usan los mismos máximos que el backend (por ejemplo, contraseñas de hasta 128 caracteres y 72 bytes, búsqueda de hasta 100 caracteres, Excel de hasta 5 MB y 500 filas). El backend es quien decide: ante cualquier diferencia, se muestra su mensaje.
+- **Caché del dashboard.** Los conteos del dashboard se guardan 15 minutos en `localStorage`; se borran al cerrar sesión.
+- **Dependencias y CI.** Ver la sección de CI más abajo.
+
+
+## Gestión del padrón
+
+### Carga masiva por Excel
+
+1. Descargá el Excel de ejemplo desde la sección **Cargar usuarios → Carga masiva**.
+2. Completá las columnas: `Nombre/s`, `Apellido/s`, `DNI`, `Email`, `Fecha de nacimiento`, `Cargo`, `Especialidad`.
+3. Los valores de **Cargo** y **Especialidad** deben coincidir exactamente con los cargados en el sistema. El Excel de ejemplo los lista en las columnas I y J.
+4. Las fechas se cargan con formato fecha de Excel (DD/MM/AAAA).
+5. Formatos aceptados: `.xlsx`, `.xls` (Excel) y `.ods` (LibreOffice Calc). Máximo **500 alumnos** y **5 MB** por archivo; si tenés más, dividilo en partes.
+6. Subí el archivo y usá el **preview** para verificar errores antes de confirmar.
+7. Confirmá: solo se importan las filas válidas.
+
+Al crear un usuario (individual o masivo), el sistema genera automáticamente su nombre de usuario y le envía un email de bienvenida con un link para configurar su contraseña.
+
+### Generación de nombre de usuario
+
+El nombre de usuario se genera a partir de los datos del usuario:
+- Primera letra de cada nombre + apellido(s) completo(s) + últimos 3 dígitos del DNI.
+- Todo en minúsculas, sin tildes.
+- Si hay colisión, se agrega sufijo numérico (`_2`, `_3`, etc.).
+
+Ejemplo: `Ignacio Mariano Mosconi, DNI 44244136` → `immosconi136`
+
+### Cambio de email
+
+Un administrador puede iniciar el cambio de email de un usuario activo. Se envía un link de confirmación al email nuevo y un aviso al actual; el cambio se aplica recién cuando el usuario confirma desde `/confirm-email`. Al confirmar se cierran todas sus sesiones.
+
 
 ## Gestión de clientes OAuth
 
-### Crear un cliente
+Cada app que usa el SSO es un cliente OAuth. El flujo desde el panel:
 
-Al crear un cliente, el backend genera un `clientSecret` hasheado. El flujo del panel es:
+1. El admin completa el nombre de la app, hasta 5 redirect URIs y elige el **usuario responsable** (un alumno activo).
+2. El backend genera el `client_secret` y lo guarda hasheado (bcrypt). **El secret no viaja al panel ni se muestra en pantalla.**
+3. En el modal que aparece, el admin hace click en **Enviar credenciales por email**: el responsable recibe un **link de un solo uso** (cifrado con AES-256-GCM, válido 24 horas por defecto) donde ve el `client_id`, el `client_secret` y las instrucciones de integración.
+4. El link queda inválido tras el primer acceso. Para reenviar las credenciales hay que regenerar el secret desde la tabla de clientes.
+5. Cambiar el responsable de una app regenera su secret; el panel pide confirmación antes de guardar nada.
 
-1. El admin completa nombre y redirect URIs.
-2. El panel recibe la respuesta con el `plainSecret`.
-3. Aparece un modal que pide el email del desarrollador.
-4. El panel envía el secret al backend, que genera un **link de un solo uso** cifrado con AES-256-GCM, válido 24 horas.
-5. El desarrollador abre el link y ve sus credenciales completas.
-6. El link queda inválido tras el primer acceso.
+### Reglas de las redirect URIs
 
-> El admin nunca ve el `plainSecret` directamente, envía un email de credenciales automáticamente. Esto reduce la superficie de exposición del secret.
+El backend valida cada URI al crear o editar un cliente y el panel muestra el motivo exacto cuando rechaza una:
 
-### Suspender / activar una app
-
-Las apps pueden suspenderse temporalmente sin eliminarse. Una app suspendida no puede autenticar usuarios, ya que el backend rechaza sus requests con `401`. Las apps suspendidas se muestran con borde rojo y badge "Suspendido" en la lista.
+- Deben usar `https://`. `http://` se acepta solo para `localhost`, `127.0.0.1` y `[::1]` (desarrollo).
+- **En producción (`NODE_ENV=production`) el backend rechaza también las de localhost**, salvo que se defina `ALLOW_LOCALHOST_REDIRECTS=true` en su `.env`.
+- No se admiten comodines (`*`), usuario y contraseña en la URL (`https://usuario:clave@sitio`) ni fragmentos (`#`). Máximo 2048 caracteres y 5 URIs por cliente.
+- Las URIs ya registradas antes de estas reglas no se revalidan hasta que se vuelvan a guardar.
 
 
 ## Tests
 
-Los tests cubren la lógica de autenticación y el store:
-
 ```bash
-# Correr todos los tests
 npm run test
 ```
 
-Los archivos de test están junto a los archivos que testean:
-- `src/store/authStore.test.ts`: lógica del store (setTokens, logout, refresh, bootstrap)
-- `src/hooks/useAuth.test.ts`: flujo completo de 2FA (loginStep1, confirm2fa, validate2fa, reset2fa)
+Los tests están junto al código que prueban (`*.spec.ts(x)` y `*.test.ts(x)`):
+
+- `src/api/` — clientes HTTP (admin, auth, catálogos, estadísticas, alumnos) e interceptor de Axios.
+- `src/store/authStore.test.ts` — lógica del store (setTokens, logout, refresh, bootstrap).
+- `src/hooks/useAuth.test.ts` — flujo completo de 2FA.
+- `src/components/layout/` — layout y rutas protegidas.
+- `src/pages/` — una spec por página, incluidas las públicas (`SetPasswordPage`, `ConfirmEmailChangePage`).
+- `src/utils/` — normalización de texto, rate limit y mensajes de error.
 
 
-## CI - GitHub Actions
+## CI — GitHub Actions
 
-El pipeline corre automáticamente en cada PR y push a `main` y `develop`:
+El pipeline corre en cada PR y push a `master` y `dev`:
 
-1. Lint (`oxlint`)
-2. Build de producción
-3. Tests unitarios con cobertura
+1. **Lint, build y tests** con cobertura.
+2. **`npm audit`**: bloquea si una dependencia de producción tiene una vulnerabilidad alta o crítica. El mismo análisis sobre las de desarrollo solo informa.
+3. **Búsqueda de secretos con gitleaks** (la configuración está en `.gitleaks.toml`: ignora los tests, que usan datos inventados).
+4. **CodeQL** (`.github/workflows/codeql.yml`): análisis estático del código, también una vez por semana.
+5. **Dependabot** (`.github/dependabot.yml`): propone semanalmente actualizaciones de dependencias y de las acciones de GitHub.
 
-El archivo de configuración está en `.github/workflows/ci-frontend.yml`.
+Configuración en `.github/`.
+
 
 ## Backend relacionado
 
-El backend SSO está en [github.com/ignamosconi/sso-frvm](https://github.com/ignamosconi/sso-frvm).
-
-Para levantar el backend localmente seguí las instrucciones de su README. El panel no funciona sin el backend corriendo.
+El backend SSO está en [github.com/ignamosconi/sso-itapu-back](https://github.com/ignamosconi/sso-itapu-back).

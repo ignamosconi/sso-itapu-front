@@ -1,20 +1,22 @@
 import { useEffect, useState } from 'react';
+import { getErrorMessage } from '@/utils/apiError';
 import {
-  Box, Title, Text, Button, Table, ActionIcon, Group,
-  Modal, TextInput, PasswordInput, Alert, Loader, Center,
-  Select, Pagination,
+  Box, Title, Text, Button, Table, Group,
+  TextInput, PasswordInput, Alert, Loader,
+  Center, Select, Pagination, Modal
 } from '@mantine/core';
 import {
-  IconPlus, IconTrash, IconAlertCircle, IconSearch,
+  IconPlus, IconAlertCircle, IconSearch,
 } from '@tabler/icons-react';
 import { adminsApi } from '@/api/adminApi';
 import { AdminResponse, CreateAdminPayload } from '@/types/api.types';
 import { useAuthStore } from '@/store/authStore';
+import { includesNormalized } from '@/utils/normalizeText';
 
 const PAGE_SIZE_OPTIONS = ['5', '10', '20', '50'];
 
 export function AdminsPage() {
-  const { adminId } = useAuthStore();
+  useAuthStore();
   const [admins, setAdmins] = useState<AdminResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,26 +26,22 @@ export function AdminsPage() {
   const [formUsername, setFormUsername] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [formUsernameError, setFormUsernameError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
-
-  // Modal eliminar
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Filtros y paginación
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const load = async () => {
+  const load = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setAdmins(await adminsApi.findAll());
     } catch {
       setError('Error al cargar los administradores.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -55,55 +53,46 @@ export function AdminsPage() {
     setFormUsername('');
     setFormPassword('');
     setFormError(null);
+    setFormUsernameError(null);
     setCreateModalOpen(true);
+  };
+
+  const USERNAME_REGEX = /^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9._-]*$/;
+
+  const validateUsername = (value: string): string | null => {
+    if (value.includes(' ')) return 'El usuario no puede contener espacios.';
+    if (!USERNAME_REGEX.test(value))
+      return 'Solo se permiten letras (con tildes), números, puntos (.), guiones bajos (_) y guiones medios (-).';
+    if (value.length > 0 && value.length < 3) return 'El usuario debe tener al menos 3 caracteres.';
+    if (value.length > 32) return 'El usuario no puede superar los 32 caracteres.';
+    return null;
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    const usernameValidationError = validateUsername(formUsername);
+    if (usernameValidationError) {
+      setFormUsernameError(usernameValidationError);
+      setFormLoading(false);
+      return;
+    }
     setFormLoading(true);
     try {
       const payload: CreateAdminPayload = { username: formUsername, password: formPassword };
       await adminsApi.create(payload);
       setCreateModalOpen(false);
-      void load();
+      await load(true);
     } catch (err) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setFormError(axiosError?.response?.data?.message ?? 'Error al crear el administrador.');
+      setFormError(getErrorMessage(err, 'Error al crear el administrador.'));
     } finally {
       setFormLoading(false);
     }
   };
 
-  // ── Eliminar admin ─────────────────────────────────────────────────────────
-
-  const openDelete = (id: string) => {
-    setDeleteTargetId(id);
-    setDeleteModalOpen(true);
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTargetId) return;
-    setDeleteLoading(true);
-    try {
-      await adminsApi.remove(deleteTargetId);
-      setDeleteModalOpen(false);
-      void load();
-    } catch (err) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setError(axiosError?.response?.data?.message ?? 'Error al eliminar el administrador.');
-      setDeleteModalOpen(false);
-    } finally {
-      setDeleteLoading(false);
-      setDeleteTargetId(null);
-    }
-  };
-
   // ── Filtros y paginación ───────────────────────────────────────────────────
 
-  const filtered = admins.filter(a =>
-    a.username.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = admins.filter(a => includesNormalized(a.username, search));
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
@@ -121,7 +110,6 @@ export function AdminsPage() {
         <Button
           leftSection={<IconPlus size={16} />}
           onClick={openCreate}
-          style={{ background: '#f5a705', color: '#1a1200' }}
         >
           Nuevo admin
         </Button>
@@ -143,8 +131,8 @@ export function AdminsPage() {
           data={PAGE_SIZE_OPTIONS}
           value={String(pageSize)}
           onChange={(v) => { setPageSize(Number(v)); setPage(1); }}
+          allowDeselect={false}
           w={100}
-          label="Por página"
         />
       </Group>
 
@@ -157,7 +145,6 @@ export function AdminsPage() {
               <Table.Tr>
                 <Table.Th>Usuario</Table.Th>
                 <Table.Th>Creado</Table.Th>
-                <Table.Th>Acciones</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -165,17 +152,6 @@ export function AdminsPage() {
                 <Table.Tr key={admin.id}>
                   <Table.Td>{admin.username}</Table.Td>
                   <Table.Td>{new Date(admin.createdAt).toLocaleDateString('es-AR')}</Table.Td>
-                  <Table.Td>
-                    {admin.id !== adminId && (
-                      <ActionIcon
-                        variant="subtle"
-                        color="red"
-                        onClick={() => openDelete(admin.id)}
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    )}
-                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -201,10 +177,16 @@ export function AdminsPage() {
             label="Usuario"
             placeholder="nuevo_admin"
             value={formUsername}
-            onChange={(e) => setFormUsername(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFormUsername(val);
+              setFormUsernameError(val.length > 0 ? validateUsername(val) : null);
+            }}
+            error={formUsernameError}
             mb="sm"
             required
             minLength={3}
+            maxLength={32}
           />
           <PasswordInput
             label="Contraseña"
@@ -214,38 +196,18 @@ export function AdminsPage() {
             mb="lg"
             required
             minLength={8}
+            maxLength={128}
           />
           <Button
             type="submit"
             fullWidth
             loading={formLoading}
-            style={{ background: '#f5a705', color: '#1a1200' }}
           >
             Crear administrador
           </Button>
         </form>
       </Modal>
 
-      {/* ── Modal confirmar eliminación ── */}
-      <Modal
-        opened={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        title="Eliminar administrador"
-        centered
-        size="sm"
-      >
-        <Text size="sm" mb="lg">
-          ¿Estás seguro de que querés eliminar este administrador? Esta acción es irreversible.
-        </Text>
-        <Group justify="flex-end" gap="sm">
-          <Button variant="subtle" onClick={() => setDeleteModalOpen(false)}>
-            Cancelar
-          </Button>
-          <Button color="red" loading={deleteLoading} onClick={() => void handleDelete()}>
-            Eliminar
-          </Button>
-        </Group>
-      </Modal>
     </Box>
   );
 }

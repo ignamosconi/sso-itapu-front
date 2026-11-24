@@ -2,9 +2,9 @@ name: CI — Frontend
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, dev]
   pull_request:
-    branches: [main, develop]
+    branches: [master, dev]
 
 jobs:
   test:
@@ -31,7 +31,6 @@ jobs:
         run: npm run build
         env:
           VITE_API_BASE_URL: http://localhost:3000
-          VITE_AUTOGESTION_URL: https://webservice.frvm.utn.edu.ar/autogestion
 
       - name: Tests
         run: npm run test
@@ -46,3 +45,33 @@ jobs:
           name: coverage-frontend
           path: coverage/
           retention-days: 7
+
+  audit:
+    name: Auditoría de dependencias
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: npm audit (dependencias de producción, bloquea ante vulnerabilidades altas)
+        run: npm audit --omit=dev --audit-level=high
+      - name: npm audit (todas, incluidas las de desarrollo; solo informa)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+  secrets-scan:
+    name: Búsqueda de secretos (gitleaks)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

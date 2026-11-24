@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { authApi } from '@/api/authApi';
+import { statsApi } from '@/api/statsApi';
 
 interface AuthState {
   accessToken: string | null;
@@ -12,6 +13,7 @@ interface AuthState {
   isBootstrapping: boolean;          // true mientras se intenta el refresh inicial al cargar
 
   setTokens: (accessToken: string, refreshToken: string) => void;
+  setAdminUsername: (username: string) => void;
   setPendingToken: (token: string) => void;
   clearPendingToken: () => void;
   refresh: () => Promise<void>;
@@ -21,7 +23,8 @@ interface AuthState {
 
 function parseJwt(token: string): Record<string, unknown> {
   try {
-    return JSON.parse(atob(token.split('.')[1]));
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
   } catch {
     return {};
   }
@@ -48,6 +51,10 @@ export const useAuthStore = create<AuthState>()(
           adminId: (payload.sub as string) ?? null,
           adminUsername: (payload.username as string) ?? null,
         });
+      },
+
+      setAdminUsername: (username) => {
+        set({ adminUsername: username });
       },
 
       setPendingToken: (token) => {
@@ -83,6 +90,8 @@ export const useAuthStore = create<AuthState>()(
             // Silenciamos el error — el estado local se limpia de todas formas
           }
         }
+        // La caché del dashboard vive en localStorage (no en la sesión): sin esto la vería quien inicie sesión después.
+        statsApi.clearCache();
         set({
           accessToken: null,
           refreshToken: null,
@@ -115,6 +124,7 @@ export const useAuthStore = create<AuthState>()(
           await get().refresh();
         } catch {
           // Refresh inválido o expirado — limpiar sesión silenciosamente
+          statsApi.clearCache();
           set({
             accessToken: null,
             refreshToken: null,
