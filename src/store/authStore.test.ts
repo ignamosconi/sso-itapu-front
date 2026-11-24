@@ -100,6 +100,26 @@ describe('authStore', () => {
       await useAuthStore.getState().logout();
       expect(authApi.logout).not.toHaveBeenCalled();
     });
+
+    it('debería borrar la caché del dashboard de localStorage', async () => {
+      localStorage.setItem('itapu_dashboard_stats', JSON.stringify({ data: {}, timestamp: Date.now() }));
+      useAuthStore.setState({ refreshToken: mockRefreshToken, isAuthenticated: true });
+      vi.mocked(authApi.logout).mockResolvedValue(undefined);
+
+      await useAuthStore.getState().logout();
+
+      expect(localStorage.getItem('itapu_dashboard_stats')).toBeNull();
+    });
+
+    it('debería borrar la caché del dashboard aunque el servidor falle', async () => {
+      localStorage.setItem('itapu_dashboard_stats', '{}');
+      useAuthStore.setState({ refreshToken: mockRefreshToken, isAuthenticated: true });
+      vi.mocked(authApi.logout).mockRejectedValue(new Error('Network error'));
+
+      await useAuthStore.getState().logout();
+
+      expect(localStorage.getItem('itapu_dashboard_stats')).toBeNull();
+    });
   });
 
   describe('refresh', () => {
@@ -144,6 +164,16 @@ describe('authStore', () => {
       expect(state.isBootstrapping).toBe(false);
       expect(state.isAuthenticated).toBe(false);
       expect(state.refreshToken).toBeNull();
+    });
+
+    it('debería borrar la caché del dashboard si la sesión no se pudo recuperar', async () => {
+      localStorage.setItem('itapu_dashboard_stats', '{}');
+      useAuthStore.setState({ refreshToken: mockRefreshToken });
+      vi.mocked(authApi.refresh).mockRejectedValue(new Error('Expired'));
+
+      await useAuthStore.getState().bootstrap();
+
+      expect(localStorage.getItem('itapu_dashboard_stats')).toBeNull();
     });
 
     it('debería setear isAuthenticated si el refresh es exitoso', async () => {

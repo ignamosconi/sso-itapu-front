@@ -1,0 +1,10 @@
+title = "SSO ITAPU Front - gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Los tests usan solo datos inventados (contraseñas y tokens de prueba)"
+paths = [
+  '''\.(spec|test)\.tsx?$''',
+]

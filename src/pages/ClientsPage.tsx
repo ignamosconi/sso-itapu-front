@@ -1,4 +1,5 @@
 import { useDebouncedCallback } from '@mantine/hooks';
+import { getErrorMessage } from '@/utils/apiError';
 import { includesNormalized } from '@/utils/normalizeText';
 import { useEffect, useState } from 'react';
 import {
@@ -189,7 +190,8 @@ export function ClientsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
-  // Modal secret (crear o regenerar) — muestra el plainSecret una sola vez
+  // Modal de credenciales (crear o regenerar): el secret no se muestra en pantalla ni viaja en la respuesta;
+  // desde acá se le envía por email al responsable, que lo ve una sola vez con un link de un solo uso.
   const [secretModalOpen, setSecretModalOpen] = useState(false);
   const [secretModalData, setSecretModalData] = useState<OAuthClientCreatedResponse | null>(null);
   const [secretModalMode, setSecretModalMode] = useState<'created' | 'regenerated'>('created');
@@ -412,8 +414,7 @@ export function ClientsPage() {
         setSecretModalOpen(true);
       }
     } catch (err) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setFormError(axiosError?.response?.data?.message ?? 'Error al guardar.');
+      setFormError(getErrorMessage(err, 'Error al guardar.'));
     } finally {
       setFormLoading(false);
     }
@@ -481,8 +482,7 @@ export function ClientsPage() {
       await oauthClientsApi.update(clientId, payload);
     } catch (err) {
       // Vuelve al formulario con el mensaje del servidor (por ejemplo, nombre repetido). No se regeneró nada.
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setFormError(axiosError?.response?.data?.message ?? 'Error al guardar.');
+      setFormError(getErrorMessage(err, 'Error al guardar.'));
       setPendingResponsibleEdit(null);
       setPendingEditLoading(false);
       return;
@@ -534,8 +534,7 @@ export function ClientsPage() {
       await oauthClientsApi.sendCredentialsByEmail(secretModalData.id);
       setSendCredSuccess(true);
     } catch (err) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setSendCredError(axiosError?.response?.data?.message ?? 'Error al enviar el email.');
+      setSendCredError(getErrorMessage(err, 'Error al enviar el email.'));
     } finally {
       setSendCredLoading(false);
     }
@@ -551,8 +550,7 @@ export function ClientsPage() {
       setEmailFromCardSuccess(true);
       await load(true);
     } catch (err) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setEmailFromCardError(axiosError?.response?.data?.message ?? 'Error al enviar el email.');
+      setEmailFromCardError(getErrorMessage(err, 'Error al enviar el email.'));
     } finally {
       setEmailFromCardLoading(false);
     }
@@ -657,14 +655,20 @@ export function ClientsPage() {
           <Text size="sm" fw={500} mb={4}>
             Redirect URIs <Text span c="dimmed" size="xs">(máximo 5)</Text>
           </Text>
+          <Text size="xs" c="dimmed" mb="xs">
+            Deben usar <Code>https://</Code>. Se acepta <Code>http://</Code> solo para <Code>localhost</Code>,{' '}
+            <Code>127.0.0.1</Code> o <Code>[::1]</Code> (desarrollo). No se permiten comodines (<Code>*</Code>), usuario y
+            contraseña en la URL ni fragmentos (<Code>#</Code>).
+          </Text>
           <Text size="xs" c="dimmed" mb="sm">
-            Debén empezar con <Code>http://</Code> o <Code>https://</Code>. Podés incluir localhost para desarrollo.
+            En producción el servidor rechaza las URIs de localhost, salvo que quien administra el sistema lo haya
+            habilitado (<Code>ALLOW_LOCALHOST_REDIRECTS</Code>).
           </Text>
           <Stack gap="xs" mb="sm">
             {formUris.map((uri, i) => (
               <Group key={i} gap="xs" wrap="nowrap">
                 <TextInput
-                  placeholder={i === 0 ? 'http://localhost:4000/callback' : 'https://miapp.com/callback'}
+                  placeholder={i === 0 ? 'https://miapp.com/callback' : 'https://miapp.com/otra-ruta'}
                   value={uri}
                   onChange={(e) => handleUriChange(i, e.target.value)}
                   style={{ flex: 1 }}

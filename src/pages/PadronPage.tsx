@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { getErrorMessage } from '@/utils/apiError';
 import { useDebouncedCallback } from '@mantine/hooks';
 import {
   Box, Title, Text, Table, Group, Badge, TextInput, Select,
@@ -145,8 +146,7 @@ export function PadronPage() {
       setResendModal(false);
       setResendTarget(null);
     } catch (err) {
-      const ax = err as { response?: { data?: { message?: string } } };
-      setError(ax?.response?.data?.message ?? 'Error al reenviar el email.');
+      setError(getErrorMessage(err, 'Error al reenviar el email.'));
       setResendModal(false);
     } finally {
       setResendConfirmLoading(false);
@@ -159,8 +159,7 @@ export function PadronPage() {
       await studentsApi.suspend(id);
       await load(true);
     } catch (err) {
-      const ax = err as { response?: { data?: { message?: string } } };
-      setError(ax?.response?.data?.message ?? 'Error.');
+      setError(getErrorMessage(err, 'Error.'));
     } finally {
       setActionLoadingId(null);
     }
@@ -172,8 +171,7 @@ export function PadronPage() {
       await studentsApi.activate(id);
       await load(true);
     } catch (err) {
-      const ax = err as { response?: { data?: { message?: string } } };
-      setError(ax?.response?.data?.message ?? 'Error.');
+      setError(getErrorMessage(err, 'Error.'));
     } finally {
       setActionLoadingId(null);
     }
@@ -247,7 +245,7 @@ export function PadronPage() {
           setConflictApps(ax.response.data.responsibleApps);
           setConflictModal(true);
         } else {
-          setDeleteError(ax?.response?.data?.message ?? 'Error al eliminar.');
+          setDeleteError(getErrorMessage(err, 'Error al eliminar.'));
         }
       }
     } finally { setDeleteLoading(false); }
@@ -277,9 +275,7 @@ export function PadronPage() {
       setEmailSentTo(newEmail);
     } catch (err) {
       if (!handleAttemptError(err, setEmailError)) {
-        const ax = err as { response?: { data?: { message?: string | string[] } } };
-        const msg = ax?.response?.data?.message;
-        setEmailError(Array.isArray(msg) ? msg.join(' ') : (msg ?? 'Error al solicitar el cambio de email.'));
+        setEmailError(getErrorMessage(err, 'Error al solicitar el cambio de email.'));
       }
     } finally { setEmailLoading(false); }
   };
@@ -313,6 +309,7 @@ export function PadronPage() {
           <TextInput
             placeholder="Usuario, nombre o DNI..."
             leftSection={<IconSearch size={14} />}
+            maxLength={100}
             value={searchText}
             onChange={e => { setSearchText(e.target.value); applySearch(e.target.value); }}
             w={300}

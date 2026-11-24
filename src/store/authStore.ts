@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { authApi } from '@/api/authApi';
+import { statsApi } from '@/api/statsApi';
 
 interface AuthState {
   accessToken: string | null;
@@ -89,6 +90,8 @@ export const useAuthStore = create<AuthState>()(
             // Silenciamos el error — el estado local se limpia de todas formas
           }
         }
+        // La caché del dashboard vive en localStorage (no en la sesión): sin esto la vería quien inicie sesión después.
+        statsApi.clearCache();
         set({
           accessToken: null,
           refreshToken: null,
@@ -121,6 +124,7 @@ export const useAuthStore = create<AuthState>()(
           await get().refresh();
         } catch {
           // Refresh inválido o expirado — limpiar sesión silenciosamente
+          statsApi.clearCache();
           set({
             accessToken: null,
             refreshToken: null,
