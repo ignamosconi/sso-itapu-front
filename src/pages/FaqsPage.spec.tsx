@@ -18,7 +18,7 @@ describe('FaqsPage', () => {
     renderFaqs();
     expect(screen.getByText('Integración SSO')).toBeInTheDocument();
     expect(screen.getByText('Uso de este panel')).toBeInTheDocument();
-    expect(screen.getByText('Levantar los repositorios')).toBeInTheDocument();
+    expect(screen.getByText('Levantar los repositorios SSO')).toBeInTheDocument();
   });
 
   it('el instructivo de integración pide client_id y client_secret en refresh y logout', () => {
