@@ -18,28 +18,31 @@ export function FaqsPage() {
         Guía de referencia para administradores del SSO y desarrolladores que quieran integrarlo.
       </Text>
 
-      {/* Repositorios */}
+      {/* Repositorios APP EJEMPLO*/}
       <Card withBorder radius="md" p="lg" mb="xl">
         <Group mb="sm">
           <ThemeIcon variant="light" color="itapu" radius="md">
             <IconBook size={16} />
           </ThemeIcon>
-          <Text fw={600}>Repositorios</Text>
+          <Text fw={600}>Repositorios - APP DE EJEMPLO: Gestor de PDFs de fechas de exámenes</Text>
         </Group>
+          <Text c="dimmed" mb="sm" size="sm">
+            Repositorios de un sistema de ejemplo, que permite ver un caso práctico de implementación correcta del SSO.
+          </Text>
         <List spacing="xs" size="sm">
           <List.Item>
             <Text size="sm">
-              Backend SSO:{' '}
-              <Anchor href="https://github.com/ignamosconi/sso-itapu-back" target="_blank" rel="noopener noreferrer">
-                github.com/ignamosconi/sso-itapu-back
+              Backend:{' '}
+              <Anchor href="https://github.com/ignamosconi/sso-itapu-testApp-back" target="_blank" rel="noopener noreferrer">
+                github.com/ignamosconi/sso-itapu-testApp-back
               </Anchor>
             </Text>
           </List.Item>
           <List.Item>
             <Text size="sm">
-              Panel de administración:{' '}
-              <Anchor href="https://github.com/ignamosconi/sso-itapu-front" target="_blank" rel="noopener noreferrer">
-                github.com/ignamosconi/sso-itapu-front
+              Frontend:{' '}
+              <Anchor href="https://github.com/ignamosconi/sso-itapu-testApp-front" target="_blank" rel="noopener noreferrer">
+                github.com/ignamosconi/sso-itapu-testApp-front
               </Anchor>
             </Text>
           </List.Item>
@@ -469,10 +472,12 @@ export function FaqsPage() {
 
         </Accordion>
       </Box>
-
-      {/* ── Repositorios ── */}
+      
+      {/* Repositorios SSO */}
+      <Title order={3} mb="md">Levantar los repositorios SSO</Title>
+    
+      {/* ── Cómo levantar los repositorios ── */}
       <Box mb="xl">
-        <Title order={3} mb="md">Levantar los repositorios</Title>
         <Accordion variant="separated" radius="md">
 
           <Accordion.Item value="levantar-backend">
@@ -526,6 +531,38 @@ export function FaqsPage() {
 
         </Accordion>
       </Box>
+
+      {/* Links github SSO */}
+            <Card withBorder radius="md" p="lg" mb="xl">
+        <Group mb="sm">
+          <ThemeIcon variant="light" color="itapu" radius="md">
+            <IconBook size={16} />
+          </ThemeIcon>
+          <Text fw={600}>Repositorios - SSO</Text>
+        </Group>
+          <Text c="dimmed" mb="sm" size="sm">
+            Repositorios que permiten el funcionamiento de este sistema.
+          </Text>
+        <List spacing="xs" size="sm">
+          <List.Item>
+            <Text size="sm">
+              Backend SSO:{' '}
+              <Anchor href="https://github.com/ignamosconi/sso-itapu-back" target="_blank" rel="noopener noreferrer">
+                github.com/ignamosconi/sso-itapu-back
+              </Anchor>
+            </Text>
+          </List.Item>
+          <List.Item>
+            <Text size="sm">
+              Panel de administración:{' '}
+              <Anchor href="https://github.com/ignamosconi/sso-itapu-front" target="_blank" rel="noopener noreferrer">
+                github.com/ignamosconi/sso-itapu-front
+              </Anchor>
+            </Text>
+          </List.Item>
+        </List>
+      </Card>
+
     </Box>
   );
 }

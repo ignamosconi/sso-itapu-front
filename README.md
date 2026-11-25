@@ -222,3 +222,9 @@ Configuración en `.github/`.
 ## Backend relacionado
 
 El backend SSO está en [github.com/ignamosconi/sso-itapu-back](https://github.com/ignamosconi/sso-itapu-back).
+
+## App de ejemplo
+Se desarrolló un "Gestor de PDFs de fechas de exámenes" que consume este SSO, para que los desarrolladores tengan un caso práctico de utilización del SSO.  
+Puede consultarse a través del siguiente enlace:  
+• Backend: [github.com/ignamosconi/sso-itapu-testApp-back](https://github.com/ignamosconi/sso-itapu-testApp-back).  
+• Frontend: [github.com/ignamosconi/sso-itapu-testApp-front](https://github.com/ignamosconi/sso-itapu-testApp-front).
