@@ -16,6 +16,7 @@ vi.mock('@/api/studentsApi', () => ({
     getPasswordLock: vi.fn(),
     requestEmailChange: vi.fn(),
     resendWelcome: vi.fn(),
+    update: vi.fn(),
   },
 }));
 
@@ -37,8 +38,8 @@ const studentActiveWithPass: StudentResponse = {
   birth_date: '2000-05-10',
   account_status: 'active',
   hasPassword: true,
-  domainRole: { id: 1, name: 'Alumno' },
-  specialty: { id: 1, name: 'Sistemas' },
+  domainRoles: [{ id: 1, name: 'Alumno' }],
+  specialties: [{ id: 1, name: 'Sistemas' }],
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
 };
@@ -53,8 +54,8 @@ const studentPendingNoPass: StudentResponse = {
   birth_date: '2001-08-20',
   account_status: 'pending_registration',
   hasPassword: false,
-  domainRole: { id: 1, name: 'Alumno' },
-  specialty: { id: 2, name: 'Química' },
+  domainRoles: [{ id: 1, name: 'Alumno' }],
+  specialties: [{ id: 2, name: 'Química' }],
   createdAt: '2026-01-02T00:00:00Z',
   updatedAt: '2026-01-02T00:00:00Z',
 };
@@ -72,7 +73,7 @@ describe('PadronPage', () => {
     vi.clearAllMocks();
     vi.mocked(studentsApi.getPasswordLock).mockResolvedValue({ locked: false, retryAfterSeconds: 0 });
     vi.mocked(rolesApi.findAll).mockResolvedValue([
-      { id: 1, name: 'Alumno', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+      { id: 1, name: 'Alumno', exclusive: true, singleSpecialty: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
     ]);
     vi.mocked(specialtiesApi.findAll).mockResolvedValue([
       { id: 1, name: 'Sistemas', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
@@ -652,5 +653,37 @@ describe('PadronPage', () => {
 
     expect(studentsApi.requestEmailChange).toHaveBeenCalledTimes(1);
     await act(async () => { finish(); });
+  });
+
+  describe('Editar usuario', () => {
+    it('debería mostrar cargos y especialidades como etiquetas', async () => {
+      vi.mocked(studentsApi.findAll).mockResolvedValue({
+        data: [{ ...studentActiveWithPass, domainRoles: [{ id: 3, name: 'Preceptor' }, { id: 4, name: 'Profesor' }] }],
+        total: 1,
+      });
+      renderPadron();
+      expect(await screen.findByText('Preceptor')).toBeInTheDocument();
+      expect(screen.getByText('Profesor')).toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: 'Cargos' })).toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: 'Especialidades' })).toBeInTheDocument();
+    });
+
+    it('debería abrir el modal, guardar con la contraseña del admin y recargar el padrón', async () => {
+      vi.mocked(studentsApi.findAll).mockResolvedValue({ data: [studentActiveWithPass], total: 1 });
+      vi.mocked(studentsApi.update).mockResolvedValueOnce({ ...studentActiveWithPass, first_name: 'Juan Carlos' });
+
+      renderPadron();
+      fireEvent.click(await screen.findByRole('button', { name: 'Editar usuario' }));
+
+      const nameInput = await screen.findByLabelText(/Nombre\/s/);
+      expect(nameInput).toHaveValue('Juan');
+      fireEvent.change(nameInput, { target: { value: 'Juan Carlos' } });
+      fireEvent.change(screen.getByLabelText(/Tu contraseña de administrador/), { target: { value: 'admin-pass' } });
+      fireEvent.click(screen.getByRole('button', { name: /Guardar cambios/i }));
+
+      expect(await screen.findByText(/Se guardaron los cambios de Juan Carlos Pérez/)).toBeInTheDocument();
+      expect(studentsApi.update).toHaveBeenCalledWith('stu-1', { first_name: 'Juan Carlos', admin_password: 'admin-pass' });
+      await waitFor(() => expect(studentsApi.findAll).toHaveBeenCalledTimes(2));
+    });
   });
 });

@@ -12,6 +12,8 @@ import { adminsApi } from '@/api/adminApi';
 import { AdminResponse, CreateAdminPayload } from '@/types/api.types';
 import { useAuthStore } from '@/store/authStore';
 import { includesNormalized } from '@/utils/normalizeText';
+import { passwordPolicyError } from '@/utils/passwordPolicy';
+import { PasswordRequirements } from '@/components/ui/PasswordRequirements';
 
 const PAGE_SIZE_OPTIONS = ['5', '10', '20', '50'];
 
@@ -75,6 +77,12 @@ export function AdminsPage() {
     if (usernameValidationError) {
       setFormUsernameError(usernameValidationError);
       setFormLoading(false);
+      return;
+    }
+    // Un solo mensaje con todo lo que le falta a la contraseña (la misma regla que aplica el servidor).
+    const policyError = passwordPolicyError(formPassword);
+    if (policyError) {
+      setFormError(policyError);
       return;
     }
     setFormLoading(true);
@@ -193,11 +201,12 @@ export function AdminsPage() {
             placeholder="••••••••"
             value={formPassword}
             onChange={(e) => setFormPassword(e.target.value)}
-            mb="lg"
+            mb="xs"
             required
-            minLength={8}
             maxLength={128}
+            autoComplete="new-password"
           />
+          <PasswordRequirements password={formPassword} mb="lg" />
           <Button
             type="submit"
             fullWidth

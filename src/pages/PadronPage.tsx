@@ -8,12 +8,13 @@ import {
 } from '@mantine/core';
 import {
   IconSearch, IconAlertCircle, IconPlayerPause,
-  IconPlayerPlay, IconTrash, IconMail, IconClockPause, IconPencil, IconCheck,
+  IconPlayerPlay, IconTrash, IconMail, IconClockPause, IconPencil, IconCheck, IconUserEdit,
 } from '@tabler/icons-react';
 import { studentsApi } from '@/api/studentsApi';
 import { rolesApi } from '@/api/rolesApi';
 import { specialtiesApi } from '@/api/specialtiesApi';
 import { StudentResponse, DomainRoleResponse, SpecialtyResponse, ResponsibleApp } from '@/types/api.types';
+import { EditStudentModal } from '@/components/students/EditStudentModal';
 import { getRateLimitInfo, getPasswordAttemptsInfo, formatWait, RateLimitKind } from '@/utils/rateLimit';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -88,6 +89,10 @@ export function PadronPage() {
     return `${local.slice(0, 2)}${'*'.repeat(Math.max(1, local.length - 2))}@${domain}`;
   };
   const [deleteModalKey, setDeleteModalKey] = useState(0);
+
+  // Modal editar usuario (nombres, DNI, fecha, cargos y especialidades; pide la contraseña del admin)
+  const [editTarget, setEditTarget] = useState<StudentResponse | null>(null);
+  const [editSuccess, setEditSuccess] = useState<string | null>(null);
 
   // Modal de conflicto: usuario es responsable de apps
   const [conflictModal, setConflictModal] = useState(false);
@@ -302,6 +307,11 @@ export function PadronPage() {
       </Group>
 
       {error && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{error}</Alert>}
+      {editSuccess && (
+        <Alert icon={<IconCheck size={16} />} color="green" mb="md" withCloseButton onClose={() => setEditSuccess(null)}>
+          {editSuccess}
+        </Alert>
+      )}
 
       {/* Filtros */}
       <Group mb="md" justify="space-between" wrap="wrap" gap="sm">
@@ -362,8 +372,8 @@ export function PadronPage() {
                   <Table.Th>Usuario</Table.Th>
                   <Table.Th>Nombre</Table.Th>
                   <Table.Th>DNI</Table.Th>
-                  <Table.Th>Cargo</Table.Th>
-                  <Table.Th>Especialidad</Table.Th>
+                  <Table.Th>Cargos</Table.Th>
+                  <Table.Th>Especialidades</Table.Th>
                   <Table.Th miw={115}>Estado</Table.Th>
                   <Table.Th>Acciones</Table.Th>
                 </Table.Tr>
@@ -377,8 +387,16 @@ export function PadronPage() {
                       <Table.Td><Text size="sm" fw={500}>{s.username}</Text></Table.Td>
                       <Table.Td>{s.first_name} {s.last_name}</Table.Td>
                       <Table.Td>{s.dni}</Table.Td>
-                      <Table.Td>{s.domainRole.name}</Table.Td>
-                      <Table.Td>{s.specialty.name}</Table.Td>
+                      <Table.Td>
+                        <Group gap={4}>
+                          {s.domainRoles.map(r => <Badge key={r.id} size="sm" variant="light">{r.name}</Badge>)}
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap={4}>
+                          {s.specialties.map(sp => <Badge key={sp.id} size="sm" variant="outline" color="gray">{sp.name}</Badge>)}
+                        </Group>
+                      </Table.Td>
                       <Table.Td miw={115} style={{ whiteSpace: 'nowrap' }}>
                         <Badge
                           color={st.color}
@@ -445,6 +463,17 @@ export function PadronPage() {
                               </ActionIcon>
                             </Tooltip>
                           )}
+
+                          <Tooltip label="Editar usuario">
+                            <ActionIcon
+                              variant="subtle"
+                              color="teal"
+                              aria-label="Editar usuario"
+                              onClick={() => { setEditSuccess(null); setEditTarget(s); }}
+                            >
+                              <IconUserEdit size={15} />
+                            </ActionIcon>
+                          </Tooltip>
                         </Flex>
                       </Table.Td>
                     </Table.Tr>
@@ -599,6 +628,19 @@ export function PadronPage() {
           </>
         )}
       </Modal>
+
+      {/* ── Modal editar usuario ── */}
+      <EditStudentModal
+        student={editTarget}
+        roles={roles}
+        specialties={specs}
+        onClose={() => setEditTarget(null)}
+        onSaved={updated => {
+          setEditTarget(null);
+          setEditSuccess(`Se guardaron los cambios de ${updated.first_name} ${updated.last_name}. Le enviamos un email avisándole.`);
+          void load(true);
+        }}
+      />
 
       {/* ── Modal conflicto: usuario responsable de apps ── */}
       <Modal

@@ -53,12 +53,18 @@ export interface Reset2faPayload {
 export interface DomainRoleResponse {
   id: number;
   name: string;
+  /** Regla "No se combina con otros cargos". Fija desde la creación. */
+  exclusive: boolean;
+  /** Regla "Exactamente una especialidad". Fija desde la creación. */
+  singleSpecialty: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateDomainRolePayload {
   name: string;
+  exclusive?: boolean;
+  single_specialty?: boolean;
 }
 
 // ── Specialties ───────────────────────────────────────────────────────────────
@@ -76,6 +82,11 @@ export interface CreateSpecialtyPayload {
 
 // ── Students ──────────────────────────────────────────────────────────────────
 
+export interface NamedRef {
+  id: number;
+  name: string;
+}
+
 export interface StudentResponse {
   id: string;
   username: string;
@@ -86,8 +97,10 @@ export interface StudentResponse {
   birth_date: string;
   account_status: 'active' | 'suspended' | 'pending_registration';
   hasPassword: boolean;
-  domainRole: { id: number; name: string };
-  specialty: { id: number; name: string };
+  /** Cargos del usuario (al menos uno), ordenados alfabéticamente. */
+  domainRoles: NamedRef[];
+  /** Especialidades del usuario (al menos una), ordenadas alfabéticamente. */
+  specialties: NamedRef[];
   createdAt: string;
   updatedAt: string;
 }
@@ -112,8 +125,8 @@ export interface CreateStudentPayload {
   email: string;
   dni: number;
   birth_date: string;
-  domain_role_id: number;
-  specialty_id: number;
+  domain_role_ids: number[];
+  specialty_ids: number[];
 }
 
 export interface UpdateStudentPayload {
@@ -121,8 +134,12 @@ export interface UpdateStudentPayload {
   last_name?: string;
   dni?: number;
   birth_date?: string;
-  domain_role_id?: number;
-  specialty_id?: number;
+  /** Reemplaza TODOS los cargos del usuario. */
+  domain_role_ids?: number[];
+  /** Reemplaza TODAS las especialidades del usuario. */
+  specialty_ids?: number[];
+  /** Contraseña del admin que hace el cambio (obligatoria). */
+  admin_password: string;
 }
 
 export interface ResponsibleApp {
@@ -173,8 +190,8 @@ export interface ImportConfirmPayload {
     dni: number;
     email: string;
     birth_date: string;
-    domainRoleId: number;
-    specialtyId: number;
+    domainRoleIds: number[];
+    specialtyIds: number[];
   }>;
 }
 

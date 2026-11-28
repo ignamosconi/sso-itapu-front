@@ -21,6 +21,13 @@ describe('getRateLimitInfo', () => {
     expect(getRateLimitInfo(err)).toEqual({ kind: 'locked', seconds: 600 });
   });
 
+  it('debería reconocer el bloqueo por intentos de la contraseña del admin (edición de usuarios)', () => {
+    const err = {
+      response: { status: 429, headers: {}, data: { code: 'ADMIN_PASSWORD_ATTEMPTS_LOCKED', retryAfterSeconds: 300 } },
+    };
+    expect(getRateLimitInfo(err)).toEqual({ kind: 'locked', seconds: 300 });
+  });
+
   it('debería usar 60 segundos si el 429 no trae un tiempo válido', () => {
     expect(getRateLimitInfo({ response: { status: 429 } })).toEqual({ kind: 'throttled', seconds: 60 });
     expect(getRateLimitInfo({ response: { status: 429, headers: { 'retry-after': 'abc' } } }))
