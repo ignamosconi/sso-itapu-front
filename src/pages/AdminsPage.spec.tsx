@@ -89,7 +89,7 @@ describe('AdminsPage', () => {
     fireEvent.change(userInput, { target: { value: 'admin con espacio' } });
     expect(await screen.findByText(/El usuario no puede contener espacios\./i)).toBeInTheDocument();
 
-    fireEvent.change(passInput, { target: { value: 'password123' } });
+    fireEvent.change(passInput, { target: { value: 'Password_123' } });
     fireEvent.click(screen.getByRole('button', { name: /Crear administrador/i }));
     expect(adminsApi.create).not.toHaveBeenCalled();
 
@@ -100,7 +100,7 @@ describe('AdminsPage', () => {
     await waitFor(() => {
       expect(adminsApi.create).toHaveBeenCalledWith({
         username: 'nuevo.admin',
-        password: 'password123',
+        password: 'Password_123',
       });
       expect(screen.getByText('nuevo.admin')).toBeInTheDocument();
     });
@@ -116,9 +116,23 @@ describe('AdminsPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Nuevo admin/i }));
 
     fireEvent.change(await screen.findByLabelText(/Usuario/i), { target: { value: 'duplicado' } });
-    fireEvent.change(screen.getByLabelText(/Contraseña/i), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText(/Contraseña/i), { target: { value: 'Password_123' } });
     fireEvent.click(screen.getByRole('button', { name: /Crear administrador/i }));
 
     expect(await screen.findByText(/El nombre de usuario ya existe/i)).toBeInTheDocument();
+  });
+
+  it('no crea el admin si la contraseña no cumple la política y dice de una todo lo que falta', async () => {
+    vi.mocked(adminsApi.findAll).mockResolvedValueOnce([]);
+    renderAdmins();
+    fireEvent.click(await screen.findByRole('button', { name: /Nuevo admin/i }));
+
+    fireEvent.change(await screen.findByLabelText(/Usuario/i), { target: { value: 'nuevo.admin' } });
+    fireEvent.change(screen.getByLabelText(/Contraseña/i), { target: { value: 'password_segura' } });
+    expect(screen.getByTestId('password-requirements')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Crear administrador/i }));
+
+    expect(await screen.findByText('La contraseña no es segura. Le falta: una letra mayúscula, un número.')).toBeInTheDocument();
+    expect(adminsApi.create).not.toHaveBeenCalled();
   });
 });

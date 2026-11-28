@@ -8,7 +8,7 @@ Provee la interfaz gráfica para que los administradores del SSO puedan:
 
 - Iniciar sesión con autenticación de dos factores (TOTP) obligatoria.
 - Gestionar el **padrón de usuarios**: alta individual, carga masiva por Excel, edición, suspensión, baja y reenvío de email de bienvenida.
-- Configurar **cargos institucionales** y **especialidades** disponibles en el sistema.
+- Configurar **cargos institucionales** (con sus reglas) y **especialidades** disponibles en el sistema. Un usuario puede tener varios cargos y varias especialidades.
 - Gestionar **administradores** del panel (crear, listar, eliminar).
 - Registrar y gestionar **aplicaciones cliente OAuth** (crear, editar, suspender, activar, eliminar, regenerar secret, enviar credenciales por email).
 - Ver **estadísticas** del sistema: apps integradas, usuarios registrados, pendientes de activación y distribución por especialidad.
@@ -92,9 +92,9 @@ npm run test:cov     # tests con cobertura
 | `/set-password?token=...` | Setup / reset de contraseña de usuarios | ✓ |
 | `/confirm-email?token=...` | Confirmación de cambio de email de un usuario | ✓ |
 | `/dashboard` | Estadísticas y health del sistema | — |
-| `/padron` | Tabla de usuarios con filtros y paginación | — |
+| `/padron` | Tabla de usuarios con filtros, paginación y acciones (editar, cambiar email, suspender, baja) | — |
 | `/padron/cargar` | Alta individual y carga masiva por Excel | — |
-| `/padron/roles` | CRUD de cargos institucionales | — |
+| `/padron/roles` | Alta, listado y baja de cargos institucionales y sus reglas | — |
 | `/padron/especialidades` | CRUD de especialidades | — |
 | `/admins` | Lista de administradores | — |
 | `/admins/me` | Perfil propio | — |
@@ -137,6 +137,7 @@ El informe de la auditoría (hallazgos, cómo se verificaron y cómo se resolvi�
 - **Encabezados HTTP.** Algunas protecciones **no se pueden poner en un `<meta>`**, como `frame-ancestors` (impide que otro sitio meta este panel en un `<iframe>`, el *clickjacking*). Tienen que ir como encabezados del hosting. El repo trae la configuración lista: `public/_headers` (Netlify y Cloudflare Pages) y `vercel.json` (Vercel). Usá el que corresponda y borrá el otro. Si el panel se sirve desde otro lado (Nginx, Apache), hay que agregar los mismos encabezados a mano: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy: camera=(), microphone=(), geolocation=()` y `Content-Security-Policy: frame-ancestors 'none'`. Además, comprobá en tu plataforma que HTTPS y HSTS estén activos.
 - **Errores del servidor.** `src/utils/apiError.ts` convierte cualquier error en un mensaje para mostrar: junta los mensajes de validación (que llegan como lista), traduce el 429 con el tiempo de espera y la caída de red, y no muestra textos técnicos de un 500. Las páginas lo usan en lugar de leer `response.data.message` directamente.
 - **Links de los mails.** `/set-password` y `/confirm-email` sacan el token de la URL apenas la página carga. En `/set-password`, los errores que se pueden corregir (contraseña inválida, límite de pedidos, caída de red) dejan el formulario abierto, porque con el token fuera de la URL perder el formulario obliga a pedir otro mail. Solo un link inexistente, usado, vencido o de una cuenta suspendida corta el flujo.
+- **Política de contraseñas.** En los tres formularios donde se elige una contraseña nueva (`/set-password`, alta de admin y **Mi perfil**) se exige lo mismo que en el backend: al menos 8 caracteres, una mayúscula, una minúscula, un número y un caracter especial (cualquier símbolo que no sea letra, número ni espacio). Debajo del campo se ve en vivo qué requisitos se cumplen y cuáles faltan, y al enviar aparece **un solo mensaje con todo lo que falta**. La regla está en `src/utils/passwordPolicy.ts` (copia de `src/common/validators/password-policy.validator.ts` del backend: si cambia, cambiar las dos). Las contraseñas anteriores a la política siguen sirviendo para entrar; se exige al cambiarlas.
 - **Límites de los campos.** Los formularios usan los mismos máximos que el backend (por ejemplo, contraseñas de hasta 128 caracteres y 72 bytes, búsqueda de hasta 100 caracteres, Excel de hasta 5 MB y 500 filas). El backend es quien decide: ante cualquier diferencia, se muestra su mensaje.
 - **Caché del dashboard.** Los conteos del dashboard se guardan 15 minutos en `localStorage`; se borran al cerrar sesión.
 - **Dependencias y CI.** Ver la sección de CI más abajo.
@@ -144,15 +145,42 @@ El informe de la auditoría (hallazgos, cómo se verificaron y cómo se resolvi�
 
 ## Gestión del padrón
 
+### Cargos, especialidades y reglas (v2.0.0)
+
+Desde la versión 2.0.0 cada usuario tiene **uno o más cargos** y **una o más especialidades** (por ejemplo, alguien que es Profesor y Preceptor). Al crear un cargo, en **Cargos institucionales**, se pueden marcar dos reglas:
+
+| Regla | Efecto |
+|-------|--------|
+| **No se combina con otros cargos** | Quien tenga este cargo no puede tener ningún otro (por ejemplo, Alumno). |
+| **Exactamente una especialidad** | Quien tenga este cargo debe tener una sola especialidad. |
+
+- Todo usuario tiene siempre al menos un cargo y al menos una especialidad. Para quien no pertenece a una especialidad en particular, conviene crear una general (por ejemplo, "ITAPU").
+- **Las reglas no se pueden cambiar** después de crear el cargo (tampoco por API). Para cambiarlas: crear un cargo nuevo con las reglas correctas, pasar a los usuarios con **Editar usuario** y eliminar el viejo.
+- En **Cargar usuarios** y **Editar usuario**, el desplegable de cargos se cierra solo al elegir un cargo que no se combina (por ejemplo, Alumno), y el de especialidades se cierra al elegir una si algún cargo elegido exige exactamente una. Se pueden volver a abrir para elegir más, y en ese caso aparece el aviso de reglas. Con cargos que se combinan (por ejemplo, Profesor) el desplegable queda abierto para seguir eligiendo.
+- El panel avisa al instante si una selección no cumple las reglas, pero quien decide es el backend: las valida en el alta individual, en la carga por Excel (preview y confirmación) y en la edición.
+- No se puede eliminar un cargo o especialidad que tenga usuarios asignados.
+
+### Editar usuario
+
+En **Padrón**, el botón **Editar usuario** permite cambiar nombre/s, apellido/s, DNI, fecha de nacimiento, cargos y especialidades (los elegidos reemplazan a los anteriores).
+
+- Para guardar se pide **la contraseña del admin que hace el cambio**. Tras varios intentos fallidos seguidos (5 por defecto) la edición queda bloqueada unos minutos y el panel muestra la cuenta regresiva.
+- Solo se envían los campos que cambiaron.
+- El usuario recibe un email con los datos anteriores y los nuevos.
+- Las apps conectadas ven el cambio en hasta 15 minutos (al refrescar el token) o cuando el usuario vuelve a iniciar sesión. El nombre de usuario y el `sub` no cambian.
+- El email y la contraseña no se editan desde acá: el email tiene su propio flujo con confirmación.
+
 ### Carga masiva por Excel
 
 1. Descargá el Excel de ejemplo desde la sección **Cargar usuarios → Carga masiva**.
 2. Completá las columnas: `Nombre/s`, `Apellido/s`, `DNI`, `Email`, `Fecha de nacimiento`, `Cargo`, `Especialidad`.
-3. Los valores de **Cargo** y **Especialidad** deben coincidir exactamente con los cargados en el sistema. El Excel de ejemplo los lista en las columnas I y J.
+3. Los valores de **Cargo** y **Especialidad** deben coincidir con los cargados en el sistema. El Excel de ejemplo los lista al costado de la planilla, con una tabla de las reglas de cada cargo, y trae filas de ejemplo con un valor y con varios.
+   - **Varios valores:** en la misma celda, separados por punto y coma (`Profesor; Preceptor`).
+   - Las filas con valores inexistentes o repetidos, o que no cumplan las reglas de los cargos, se marcan con error en el preview y no se importan.
 4. Las fechas se cargan con formato fecha de Excel (DD/MM/AAAA).
 5. Formatos aceptados: `.xlsx`, `.xls` (Excel) y `.ods` (LibreOffice Calc). Máximo **500 alumnos** y **5 MB** por archivo; si tenés más, dividilo en partes.
 6. Subí el archivo y usá el **preview** para verificar errores antes de confirmar.
-7. Confirmá: solo se importan las filas válidas.
+7. Confirmá: solo se importan las filas válidas. El backend las vuelve a validar al confirmar; si algo cambió desde el preview (por ejemplo, se borró un cargo), no se importa nada y hay que generar el preview de nuevo.
 
 Al crear un usuario (individual o masivo), el sistema genera automáticamente su nombre de usuario y le envía un email de bienvenida con un link para configurar su contraseña.
 
@@ -163,7 +191,7 @@ El nombre de usuario se genera a partir de los datos del usuario:
 - Todo en minúsculas, sin tildes.
 - Si hay colisión, se agrega sufijo numérico (`_2`, `_3`, etc.).
 
-Ejemplo: `Ignacio Mariano Mosconi, DNI 44244136` → `immosconi136`
+Ejemplo: `Ignacio Mariano Mosconi, DNI 30123456` → `immosconi456`
 
 ### Cambio de email
 

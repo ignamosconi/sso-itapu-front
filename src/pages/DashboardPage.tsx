@@ -99,7 +99,7 @@ function SpecialtyChart({ data }: { data: { specialty: string; count: number }[]
           </ThemeIcon>
           <Box>
             <Text fw={600} size="sm">Alumnos por especialidad</Text>
-            <Text size="xs" c="dimmed">Cuentas activas y pendientes</Text>
+            <Text size="xs" c="dimmed">Cuentas activas y pendientes. Quien tiene varias especialidades cuenta en cada una.</Text>
           </Box>
         </Group>
         <Text size="sm" c="dimmed">No hay datos disponibles.</Text>
@@ -115,7 +115,7 @@ function SpecialtyChart({ data }: { data: { specialty: string; count: number }[]
         </ThemeIcon>
         <Box>
           <Text fw={600} size="sm">Alumnos por especialidad</Text>
-          <Text size="xs" c="dimmed">Cuentas activas y pendientes</Text>
+          <Text size="xs" c="dimmed">Cuentas activas y pendientes. Quien tiene varias especialidades cuenta en cada una.</Text>
         </Box>
       </Group>
 

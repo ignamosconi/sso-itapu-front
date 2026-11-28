@@ -3,8 +3,9 @@
 // El backend responde 429 por dos motivos distintos:
 //  - 'throttled': demasiados requests seguidos desde la misma IP. La espera viene
 //    en el header Retry-After (en segundos).
-//  - 'locked': demasiados intentos de contraseña contra un mismo alumno. La espera
-//    viene en el body (retryAfterSeconds) y se identifica con code PASSWORD_ATTEMPTS_LOCKED.
+//  - 'locked': demasiados intentos de contraseña (de un alumno en la baja o el cambio de email,
+//    o del propio admin al confirmar la edición de un usuario). La espera viene en el body
+//    (retryAfterSeconds) y se identifica con code PASSWORD_ATTEMPTS_LOCKED o ADMIN_PASSWORD_ATTEMPTS_LOCKED.
 
 export type RateLimitKind = 'throttled' | 'locked';
 
@@ -13,7 +14,7 @@ export interface RateLimitInfo {
   seconds: number;
 }
 
-const PASSWORD_ATTEMPTS_LOCKED_CODE = 'PASSWORD_ATTEMPTS_LOCKED';
+const LOCKED_CODES = ['PASSWORD_ATTEMPTS_LOCKED', 'ADMIN_PASSWORD_ATTEMPTS_LOCKED'];
 // Si el 429 no trae un tiempo legible (por ejemplo, el header no llegó), se asume 1 minuto.
 const DEFAULT_WAIT_SECONDS = 60;
 
@@ -33,7 +34,7 @@ export function getRateLimitInfo(err: unknown): RateLimitInfo | null {
 
   if (response?.status !== 429) return null;
 
-  if (response.data?.code === PASSWORD_ATTEMPTS_LOCKED_CODE) {
+  if (response.data?.code && LOCKED_CODES.includes(response.data.code)) {
     return {
       kind: 'locked',
       seconds: toPositiveSeconds(response.data.retryAfterSeconds) ?? DEFAULT_WAIT_SECONDS,

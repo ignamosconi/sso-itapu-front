@@ -109,7 +109,7 @@ export function FaqsPage() {
                 <List.Item>
                   <Text size="sm" fw={500}>0. Consultá los valores dinámicos (no hardcodees)</Text>
                   <Code block mt={4}>
-                    {`GET ${ssoUrl}/sso/info/domain-roles\n// → ["Alumno", "Docente", "Autoridad", ...]\n// Valores posibles del campo "cargo" en /sso/me\n\nGET ${ssoUrl}/sso/info/specialties\n// → ["Sistemas", "Mecánica", ...]\n// Valores posibles del campo "especialidad" en /sso/me`}
+                    {`GET ${ssoUrl}/sso/info/domain-roles\n// → ["Alumno", "Docente", "Autoridad", ...]\n// Valores posibles de la lista "cargos" en /sso/me\n\nGET ${ssoUrl}/sso/info/specialties\n// → ["Sistemas", "Mecánica", ...]\n// Valores posibles de la lista "especialidades" en /sso/me`}
                   </Code>
                   <Text size="xs" c="dimmed" mt={4}>
                     Estos endpoints son públicos. Si el administrador agrega o renombra un cargo o
@@ -147,7 +147,7 @@ export function FaqsPage() {
                 <List.Item>
                   <Text size="sm" fw={500}>4. Identificá al usuario</Text>
                   <Code block mt={4}>
-                    {`GET ${ssoUrl}/sso/me\nAuthorization: Bearer ACCESS_TOKEN\n\n// Respuesta:\n// {\n//   "sub": "uuid",              ← ID único, usalo como clave en tu sistema\n//   "nombre": "Ignacio Mariano",\n//   "apellido": "Mosconi",\n//   "username": "immosconi136",\n//   "especialidad": "Sistemas", ← ver /sso/info/specialties\n//   "email": "...",\n//   "cargo": "Alumno",          ← ver /sso/info/domain-roles\n//   "aud": "TU_ID"              ← tu client_id\n// }`}
+                    {`GET ${ssoUrl}/sso/me\nAuthorization: Bearer ACCESS_TOKEN\n\n// Respuesta:\n// {\n//   "sub": "uuid",              ← ID único, usalo como clave en tu sistema\n//   "nombre": "Ignacio Mariano",\n//   "apellido": "Mosconi",\n//   "username": "immosconi456",\n//   "especialidades": ["Sistemas"],        ← lista, ver /sso/info/specialties\n//   "email": "...",\n//   "cargos": ["Preceptor", "Profesor"],   ← lista, ver /sso/info/domain-roles\n//   "aud": "TU_ID"              ← tu client_id\n// }\n// "cargos" y "especialidades" son SIEMPRE listas (al menos un elemento,\n// orden alfabético). Preguntá con includes(): cargos.includes("Profesor")`}
                   </Code>
                 </List.Item>
 
@@ -199,13 +199,19 @@ export function FaqsPage() {
 
           <Accordion.Item value="roles-especialidades">
             <Accordion.Control icon={<IconCode size={16} />}>
-              ¿Cómo sé qué valores puede tener el campo "cargo" o "especialidad" del usuario?
+              ¿Cómo sé qué cargos y especialidades tiene el usuario?
             </Accordion.Control>
             <Accordion.Panel>
               <Text size="sm" mb="sm">
-                El campo <Code>cargo</Code> contiene el cargo institucional (Alumno, Profesor, etc.) y{' '}
-                <Code>especialidad</Code> la especialidad. Estos valores los configura el administrador y
-                pueden cambiar. Para no hardcodearlos, consultá los endpoints públicos:
+                Una persona puede tener <strong>varios cargos</strong> (por ejemplo, Profesor y Preceptor) y{' '}
+                <strong>varias especialidades</strong>. Por eso <Code>/sso/me</Code> devuelve dos listas:{' '}
+                <Code>cargos</Code> y <Code>especialidades</Code>. Siempre traen al menos un elemento y vienen
+                ordenadas alfabéticamente. Desde la versión 2.0.0 ya no existen los campos sueltos{' '}
+                <Code>cargo</Code> y <Code>especialidad</Code>.
+              </Text>
+              <Text size="sm" mb="sm">
+                Los valores posibles los configura el administrador y pueden cambiar. Para no hardcodearlos,
+                consultá los endpoints públicos:
               </Text>
               <Code block mb="sm">
                 {`GET ${ssoUrl}/sso/info/domain-roles\n→ ["Alumno", "Profesor", "Autoridad", ...]\n\nGET ${ssoUrl}/sso/info/specialties\n→ ["Sistemas", "Mecánica", ...]`}
@@ -213,7 +219,17 @@ export function FaqsPage() {
               <Text size="sm">
                 Ejemplo de uso: si tu app solo debe permitir el acceso a docentes, hacé{' '}
                 <Code>GET /sso/info/domain-roles</Code> al iniciar y verificá que el cargo "Profesor"
-                exista. Luego, al autenticar, verificá que <Code>cargo === 'Profesor'</Code>.
+                exista. Luego, al autenticar, verificá que{' '}
+                <Code>cargos.includes('Profesor')</Code>. Si varios cargos dan el mismo permiso, alcanza con que
+                el usuario tenga <strong>alguno</strong>:
+              </Text>
+              <Code block mt="sm" mb="sm">
+                {`const STAFF = ['Profesor', 'Preceptor', 'Autoridad'];\nconst esStaff = user.cargos.some(c => STAFF.includes(c));\n\n// Contenido por especialidad: que tenga ALGUNA de las pedidas\nconst ve = user.especialidades.includes('Sistemas');`}
+              </Code>
+              <Text size="sm">
+                Si un administrador cambia los cargos o especialidades de un usuario, tu app lo ve en el próximo
+                refresh del token (hasta 15 minutos) o cuando el usuario vuelve a iniciar sesión. El{' '}
+                <Code>sub</Code> no cambia.
               </Text>
             </Accordion.Panel>
           </Accordion.Item>
@@ -252,12 +268,15 @@ export function FaqsPage() {
               <Text size="sm" fw={500} mb={4}>Alta individual</Text>
               <List size="sm" spacing="xs" mb="sm">
                 <List.Item>Andá a <strong>Usuarios → Cargar usuarios → Alta individual</strong>.</List.Item>
+                <List.Item>Elegí uno o más cargos y una o más especialidades, respetando las reglas de cada cargo (ver la pregunta sobre cargos y especialidades).</List.Item>
                 <List.Item>Completá todos los campos y confirmá. El sistema genera el nombre de usuario automáticamente y envía un email de bienvenida al usuario con un link para configurar su contraseña.</List.Item>
               </List>
               <Text size="sm" fw={500} mb={4}>Carga masiva por Excel</Text>
               <List size="sm" spacing="xs">
                 <List.Item>Andá a <strong>Usuarios → Cargar usuarios → Carga masiva</strong>.</List.Item>
-                <List.Item>Descargá el Excel de ejemplo — incluye los cargos y especialidades válidos en las columnas I y J.</List.Item>
+                <List.Item>Descargá el Excel de ejemplo: al costado de la planilla lista los cargos válidos con sus reglas y las especialidades válidas, y trae filas de ejemplo con un solo valor y con varios.</List.Item>
+                <List.Item>Para cargar <strong>varios cargos o especialidades</strong> en una persona, escribilos en la misma celda separados por punto y coma: <Code>Profesor; Preceptor</Code>.</List.Item>
+                <List.Item>Las filas con cargos o especialidades inexistentes, repetidos, o que no cumplan las reglas de los cargos se marcan con error y no se importan.</List.Item>
                 <List.Item>Completá el archivo y subilo (máximo 500 alumnos y 5 MB por archivo: si tenés más, dividilo en partes). Se muestra un preview con errores por fila antes de confirmar.</List.Item>
                 <List.Item>Al confirmar, se importan solo las filas válidas y se envían emails de bienvenida a cada usuario.</List.Item>
               </List>
@@ -280,6 +299,28 @@ export function FaqsPage() {
                   Si el email está mal cargado y la cuenta sigue <strong>pendiente</strong>, no se puede editar:
                   dá de baja al usuario (no pide contraseña) y volvé a cargarlo con el email correcto.
                 </List.Item>
+              </List>
+            </Accordion.Panel>
+          </Accordion.Item>
+
+          <Accordion.Item value="editar-usuario">
+            <Accordion.Control icon={<IconUsers size={16} />}>
+              ¿Cómo corrijo los datos, cargos o especialidades de un usuario?
+            </Accordion.Control>
+            <Accordion.Panel>
+              <List size="sm" spacing="xs">
+                <List.Item>Andá a <strong>Usuarios → Padrón</strong>, buscá al usuario y hacé click en <strong>Editar usuario</strong>.</List.Item>
+                <List.Item>Podés cambiar nombre/s, apellido/s, DNI, fecha de nacimiento, cargos y especialidades. Los cargos y especialidades elegidos reemplazan a los anteriores y tienen que cumplir las reglas de los cargos.</List.Item>
+                <List.Item>
+                  Para guardar se pide <strong>tu contraseña de administrador</strong>. Si te equivocás varias veces
+                  seguidas, la edición se bloquea unos minutos.
+                </List.Item>
+                <List.Item>El usuario recibe un email con los datos anteriores y los nuevos.</List.Item>
+                <List.Item>
+                  Las apps conectadas ven el cambio en hasta 15 minutos (o cuando el usuario vuelve a iniciar sesión).
+                  Su nombre de usuario y su identificador (<Code>sub</Code>) no cambian.
+                </List.Item>
+                <List.Item>El email y la contraseña no se editan desde acá: el email se cambia con el ícono de lápiz azul, con el alumno presente.</List.Item>
               </List>
             </Accordion.Panel>
           </Accordion.Item>
@@ -388,9 +429,11 @@ export function FaqsPage() {
                   <strong> solo el último</strong> sirve.
                 </List.Item>
                 <List.Item>
-                  La contraseña debe tener al menos 8 caracteres y como máximo 72 bytes (unos 72 caracteres; las tildes y la
-                  ñ cuentan doble). Si el servidor la rechaza, la página muestra el motivo y se puede corregir sin pedir
-                  otro link.
+                  La contraseña debe tener al menos 8 caracteres, con <strong>una mayúscula, una minúscula, un número y un
+                  caracter especial</strong> (cualquier símbolo que no sea letra, número ni espacio, como ! # $ % _ -), y
+                  como máximo 72 bytes (unos 72 caracteres; las tildes y la ñ cuentan doble). La página muestra en vivo qué
+                  requisitos faltan y, si el servidor la rechaza, muestra el motivo y se puede corregir sin pedir otro link.
+                  La misma regla vale para las contraseñas de los administradores (alta y <strong>Mi perfil</strong>).
                 </List.Item>
                 <List.Item>
                   Si la página dice que el link ya fue usado o venció, la persona tiene que pedir otro desde el popup con
@@ -451,7 +494,7 @@ export function FaqsPage() {
 
           <Accordion.Item value="roles-especialidades-admin">
             <Accordion.Control icon={<IconHelp size={16} />}>
-              ¿Cómo creo o elimino cargos y especialidades?
+              ¿Cómo creo o elimino cargos y especialidades? ¿Qué son las reglas de los cargos?
             </Accordion.Control>
             <Accordion.Panel>
               <List size="sm" spacing="xs">
@@ -459,8 +502,32 @@ export function FaqsPage() {
                 <List.Item>Las especialidades se gestionan en <strong>Usuarios → Especialidades</strong>.</List.Item>
                 <List.Item>Podés crear los que necesites. El nombre solo admite letras y espacios.</List.Item>
                 <List.Item>
+                  Al crear un cargo podés marcar dos reglas:
+                  <List size="sm" withPadding mt={4}>
+                    <List.Item>
+                      <strong>No se combina con otros cargos</strong>: quien lo tenga solo puede tener ese cargo
+                      (por ejemplo, Alumno).
+                    </List.Item>
+                    <List.Item>
+                      <strong>Exactamente una especialidad</strong>: quien lo tenga debe tener una sola especialidad.
+                    </List.Item>
+                  </List>
+                </List.Item>
+                <List.Item>
+                  Todo usuario tiene siempre al menos un cargo y al menos una especialidad. Si alguien no
+                  pertenece a una especialidad en particular, creá una general (por ejemplo, "ITAPU") y asignale esa.
+                </List.Item>
+                <List.Item>
+                  Las reglas se controlan en el alta individual, en la carga por Excel y al editar un usuario.
+                </List.Item>
+                <List.Item>
+                  <strong>Las reglas no se pueden cambiar</strong> después de crear el cargo. Si necesitás otras,
+                  creá un cargo nuevo con las reglas correctas, pasá a los usuarios a ese cargo (con{' '}
+                  <strong>Editar usuario</strong> en el Padrón) y eliminá el cargo viejo.
+                </List.Item>
+                <List.Item>
                   <strong>No podés eliminar</strong> un cargo o especialidad que tenga usuarios asignados.
-                  Primero reasigná o dá de baja a esos usuarios.
+                  Primero quitáselo a esos usuarios con <strong>Editar usuario</strong> o dalos de baja.
                 </List.Item>
                 <List.Item>
                   Cualquier cambio se refleja automáticamente en los endpoints públicos{' '}

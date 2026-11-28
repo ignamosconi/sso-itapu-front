@@ -52,8 +52,8 @@ describe('studentsApi', () => {
       email: 'ana@test.com',
       dni: 12345678,
       birth_date: '2000-01-01',
-      domain_role_id: 1,
-      specialty_id: 2,
+      domain_role_ids: [1, 3],
+      specialty_ids: [2],
     };
     vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 'u2', ...payload } });
 
@@ -73,8 +73,8 @@ describe('studentsApi', () => {
 
   it('update debería hacer PATCH a /admin/students/:id', async () => {
     vi.mocked(apiClient.patch).mockResolvedValue({ data: { id: 'u1', first_name: 'Editado' } });
-    const res = await studentsApi.update('u1', { first_name: 'Editado' });
-    expect(apiClient.patch).toHaveBeenCalledWith('/admin/students/u1', { first_name: 'Editado' });
+    const res = await studentsApi.update('u1', { first_name: 'Editado', domain_role_ids: [1, 2], admin_password: 'admin-pass' });
+    expect(apiClient.patch).toHaveBeenCalledWith('/admin/students/u1', { first_name: 'Editado', domain_role_ids: [1, 2], admin_password: 'admin-pass' });
     expect(res.first_name).toBe('Editado');
   });
 

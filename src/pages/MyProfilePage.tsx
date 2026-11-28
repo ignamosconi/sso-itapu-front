@@ -12,6 +12,8 @@ import { adminsApi } from '@/api/adminApi';
 import { useAuthStore } from '@/store/authStore';
 import { useAuth } from '@/hooks/useAuth';
 import { DeleteSelfPayload } from '@/types/api.types';
+import { passwordPolicyError } from '@/utils/passwordPolicy';
+import { PasswordRequirements } from '@/components/ui/PasswordRequirements';
 
 type EditMode = 'username' | 'password';
 
@@ -92,6 +94,12 @@ export function MyProfilePage() {
     setProfileError(null);
     setProfileSuccess(null);
 
+    // Primero la política: un solo mensaje con todo lo que le falta a la contraseña nueva.
+    const policyError = passwordPolicyError(newPassword);
+    if (policyError) {
+      setProfileError(policyError);
+      return;
+    }
     if (newPassword !== confirmPassword) {
       setProfileError('La nueva contraseña y su confirmación no coinciden.');
       return;
@@ -267,15 +275,15 @@ export function MyProfilePage() {
                 />
                 <PasswordInput
                   label="Nueva contraseña"
-                  description="Mínimo 8 caracteres."
                   placeholder="••••••••"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  mb="sm"
+                  mb="xs"
                   required
-                  minLength={8}
                   maxLength={128}
+                  autoComplete="new-password"
                 />
+                <PasswordRequirements password={newPassword} />
                 <PasswordInput
                   label="Confirmar nueva contraseña"
                   placeholder="••••••••"
@@ -283,8 +291,8 @@ export function MyProfilePage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   mb="lg"
                   required
-                  minLength={8}
                   maxLength={128}
+                  autoComplete="new-password"
                 />
                 <Button
                   type="submit"

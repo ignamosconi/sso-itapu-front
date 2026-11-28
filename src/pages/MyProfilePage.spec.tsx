@@ -115,8 +115,18 @@ describe('MyProfilePage', () => {
     const currentPassInput = within(form).getByLabelText(/^Contraseña actual/i);
     const confirmPassInput = within(form).getByLabelText(/^Confirmar nueva contraseña/i);
 
-    // Error por falta de coincidencia
+    // Contraseña nueva que no cumple la política: un solo mensaje con todo lo que falta, sin llamar a la API
     fireEvent.change(currentPassInput, { target: { value: 'OldPass123!' } });
+    fireEvent.change(newPassInput, { target: { value: 'nueva' } });
+    fireEvent.change(confirmPassInput, { target: { value: 'nueva' } });
+    fireEvent.submit(form);
+
+    expect(
+      await screen.findByText('La contraseña no es segura. Le falta: al menos 8 caracteres, una letra mayúscula, un número, un caracter especial (por ejemplo ! # $ % _ -).'),
+    ).toBeInTheDocument();
+    expect(adminsApi.updateSelf).not.toHaveBeenCalled();
+
+    // Error por falta de coincidencia
     fireEvent.change(newPassInput, { target: { value: 'NewPass123!' } });
     fireEvent.change(confirmPassInput, { target: { value: 'OtraPass123!' } });
     fireEvent.submit(form);

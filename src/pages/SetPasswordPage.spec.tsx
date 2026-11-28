@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { MantineProvider } from '@mantine/core';
 import { SetPasswordPage } from './SetPasswordPage';
@@ -80,8 +80,8 @@ describe('SetPasswordPage', () => {
       expect(screen.getByLabelText(/Nueva contraseña/i)).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText(/Nueva contraseña/i), { target: { value: 'password123' } });
-    fireEvent.change(screen.getByLabelText(/Confirmar contraseña/i), { target: { value: 'otra12345' } });
+    fireEvent.change(screen.getByLabelText(/Nueva contraseña/i), { target: { value: 'Password#123' } });
+    fireEvent.change(screen.getByLabelText(/Confirmar contraseña/i), { target: { value: 'Otra#12345' } });
     fireEvent.click(screen.getByRole('button', { name: /Guardar contraseña/i }));
 
     expect(screen.getByText(/Las contraseñas no coinciden\./i)).toBeInTheDocument();
@@ -99,8 +99,8 @@ describe('SetPasswordPage', () => {
       expect(screen.getByLabelText(/Nueva contraseña/i)).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText(/Nueva contraseña/i), { target: { value: 'nuevaPass123' } });
-    fireEvent.change(screen.getByLabelText(/Confirmar contraseña/i), { target: { value: 'nuevaPass123' } });
+    fireEvent.change(screen.getByLabelText(/Nueva contraseña/i), { target: { value: 'Nueva#Pass123' } });
+    fireEvent.change(screen.getByLabelText(/Confirmar contraseña/i), { target: { value: 'Nueva#Pass123' } });
     fireEvent.click(screen.getByRole('button', { name: /Guardar contraseña/i }));
 
     await waitFor(() => {
@@ -109,8 +109,8 @@ describe('SetPasswordPage', () => {
 
     expect(apiClient.post).toHaveBeenLastCalledWith('/sso/set-password', {
       token: 'tok123',
-      password: 'nuevaPass123',
-      confirmPassword: 'nuevaPass123',
+      password: 'Nueva#Pass123',
+      confirmPassword: 'Nueva#Pass123',
     });
   });
 
@@ -125,8 +125,8 @@ describe('SetPasswordPage', () => {
       expect(screen.getByLabelText(/Nueva contraseña/i)).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText(/Nueva contraseña/i), { target: { value: 'nuevaPass123' } });
-    fireEvent.change(screen.getByLabelText(/Confirmar contraseña/i), { target: { value: 'nuevaPass123' } });
+    fireEvent.change(screen.getByLabelText(/Nueva contraseña/i), { target: { value: 'Nueva#Pass123' } });
+    fireEvent.change(screen.getByLabelText(/Confirmar contraseña/i), { target: { value: 'Nueva#Pass123' } });
     fireEvent.click(screen.getByRole('button', { name: /Guardar contraseña/i }));
 
     await waitFor(() => {
@@ -134,20 +134,65 @@ describe('SetPasswordPage', () => {
     });
   });
 
+  describe('política de contraseñas', () => {
+    it('al enviar una contraseña débil dice de una TODO lo que le falta y no llama al servidor', async () => {
+      vi.mocked(apiClient.post).mockResolvedValueOnce({});
+      renderWithToken('?token=tok123');
+      await openFormAndSubmit('abc');
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'La contraseña no es segura. Le falta: al menos 8 caracteres, una letra mayúscula, un número, un caracter especial (por ejemplo ! # $ % _ -).',
+      );
+      expect(apiClient.post).toHaveBeenCalledTimes(1); // solo la validación del token
+    });
+
+    it('la política se informa antes que la falta de coincidencia', async () => {
+      vi.mocked(apiClient.post).mockResolvedValueOnce({});
+      renderWithToken('?token=tok123');
+      await openFormAndSubmit('password123', 'otra');
+
+      expect(screen.getByRole('alert')).toHaveTextContent('Le falta: una letra mayúscula, un caracter especial');
+    });
+
+    it('muestra en vivo qué requisitos se cumplen y cuáles faltan', async () => {
+      vi.mocked(apiClient.post).mockResolvedValueOnce({});
+      renderWithToken('?token=tok123');
+      await waitFor(() => expect(screen.getByLabelText(/Nueva contraseña/i)).toBeInTheDocument());
+
+      const list = screen.getByTestId('password-requirements');
+      const state = () => Object.fromEntries(
+        within(list).getAllByRole('listitem').map(li => [li.textContent?.replace(/ \((cumplido|falta)\)$/, ''), li.getAttribute('data-ok')]),
+      );
+      expect(Object.values(state())).toEqual(['false', 'false', 'false', 'false', 'false']);
+
+      fireEvent.change(screen.getByLabelText(/Nueva contraseña/i), { target: { value: 'itapu2026' } });
+      expect(state()).toEqual({
+        'Al menos 8 caracteres': 'true',
+        'Una letra mayúscula': 'false',
+        'Una letra minúscula': 'true',
+        'Un número': 'true',
+        'Un caracter especial (por ejemplo ! # $ % _ -)': 'false',
+      });
+
+      fireEvent.change(screen.getByLabelText(/Nueva contraseña/i), { target: { value: 'Itapu#2026' } });
+      expect(Object.values(state())).toEqual(['true', 'true', 'true', 'true', 'true']);
+    });
+  });
+
   describe('errores que no deben perder el formulario', () => {
     it('rechaza en el navegador una contraseña de más de 72 bytes sin llamar al servidor', async () => {
       vi.mocked(apiClient.post).mockResolvedValueOnce({});
       renderWithToken('?token=tok123');
-      await openFormAndSubmit('ñ'.repeat(37)); // 37 ñ = 74 bytes pero solo 37 caracteres
+      await openFormAndSubmit('Aa1#' + 'ñ'.repeat(35)); // 74 bytes pero solo 39 caracteres
 
-      expect(screen.getByText(/no puede superar los 72 bytes/i)).toBeInTheDocument();
+      expect(screen.getByRole('alert')).toHaveTextContent(/no puede superar los 72 bytes/i);
       expect(apiClient.post).toHaveBeenCalledTimes(1); // solo la validación del token
     });
 
     it('acepta 72 bytes justos', async () => {
       vi.mocked(apiClient.post).mockResolvedValueOnce({}).mockResolvedValueOnce({});
       renderWithToken('?token=tok123');
-      await openFormAndSubmit('a'.repeat(72));
+      await openFormAndSubmit('Aa1#' + 'a'.repeat(68));
 
       await waitFor(() => expect(screen.getByText(/¡Contraseña establecida!/i)).toBeInTheDocument());
     });
@@ -158,13 +203,13 @@ describe('SetPasswordPage', () => {
         .mockRejectedValueOnce(httpError(400, { message: ['La contraseña es demasiado débil.'] }))
         .mockResolvedValueOnce({});
       renderWithToken('?token=tok123');
-      await openFormAndSubmit('claveDebil1');
+      await openFormAndSubmit('Clave#Debil1');
 
       await waitFor(() => expect(screen.getByText(/La contraseña es demasiado débil\./i)).toBeInTheDocument());
       expect(screen.getByLabelText(/Nueva contraseña/i)).toBeInTheDocument(); // el formulario sigue ahí
 
-      fireEvent.change(screen.getByLabelText(/Nueva contraseña/i), { target: { value: 'otraClave123' } });
-      fireEvent.change(screen.getByLabelText(/Confirmar contraseña/i), { target: { value: 'otraClave123' } });
+      fireEvent.change(screen.getByLabelText(/Nueva contraseña/i), { target: { value: 'Otra#Clave123' } });
+      fireEvent.change(screen.getByLabelText(/Confirmar contraseña/i), { target: { value: 'Otra#Clave123' } });
       fireEvent.click(screen.getByRole('button', { name: /Guardar contraseña/i }));
       await waitFor(() => expect(screen.getByText(/¡Contraseña establecida!/i)).toBeInTheDocument());
     });
@@ -174,7 +219,7 @@ describe('SetPasswordPage', () => {
         .mockResolvedValueOnce({})
         .mockRejectedValueOnce(httpError(429, { message: 'ThrottlerException: Too Many Requests' }, { 'retry-after': '30' }));
       renderWithToken('?token=tok123');
-      await openFormAndSubmit('nuevaPass123');
+      await openFormAndSubmit('Nueva#Pass123');
 
       await waitFor(() => expect(screen.getByText(/Probá de nuevo en 30 segundos/i)).toBeInTheDocument());
       expect(screen.getByLabelText(/Nueva contraseña/i)).toBeInTheDocument();
@@ -185,7 +230,7 @@ describe('SetPasswordPage', () => {
         .mockResolvedValueOnce({})
         .mockRejectedValueOnce(new AxiosError('Network Error', 'ERR_NETWORK'));
       renderWithToken('?token=tok123');
-      await openFormAndSubmit('nuevaPass123');
+      await openFormAndSubmit('Nueva#Pass123');
 
       await waitFor(() => expect(screen.getByText(/No se pudo conectar con el servidor/i)).toBeInTheDocument());
       expect(screen.getByLabelText(/Nueva contraseña/i)).toBeInTheDocument();
@@ -196,7 +241,7 @@ describe('SetPasswordPage', () => {
         .mockResolvedValueOnce({})
         .mockRejectedValueOnce(httpError(500, { message: 'Internal server error' }));
       renderWithToken('?token=tok123');
-      await openFormAndSubmit('nuevaPass123');
+      await openFormAndSubmit('Nueva#Pass123');
 
       await waitFor(() => expect(screen.getByText(/No se pudo guardar la contraseña/i)).toBeInTheDocument());
       expect(screen.queryByText(/Internal server error/i)).not.toBeInTheDocument();
@@ -210,7 +255,7 @@ describe('SetPasswordPage', () => {
     ])('un %i al guardar muestra el error y quita el formulario', async (status, message) => {
       vi.mocked(apiClient.post).mockResolvedValueOnce({}).mockRejectedValueOnce(httpError(status, { message }));
       renderWithToken('?token=tok123');
-      await openFormAndSubmit('nuevaPass123');
+      await openFormAndSubmit('Nueva#Pass123');
 
       await waitFor(() => expect(screen.getByText(message)).toBeInTheDocument());
       expect(screen.queryByLabelText(/Nueva contraseña/i)).not.toBeInTheDocument();

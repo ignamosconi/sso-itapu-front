@@ -25,8 +25,8 @@ describe('RolesPage', () => {
 
   it('debería listar roles institucionales y filtrar por nombre', async () => {
     vi.mocked(rolesApi.findAll).mockResolvedValueOnce([
-      { id: 1, name: 'Alumno', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-      { id: 2, name: 'Docente', createdAt: '2026-01-02T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
+      { id: 1, name: 'Alumno', exclusive: false, singleSpecialty: false, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+      { id: 2, name: 'Docente', exclusive: false, singleSpecialty: false, createdAt: '2026-01-02T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
     ]);
 
     renderRoles();
@@ -44,8 +44,8 @@ describe('RolesPage', () => {
 
   it('debería filtrar ignorando tildes y mayúsculas, en ambos sentidos', async () => {
     vi.mocked(rolesApi.findAll).mockResolvedValueOnce([
-      { id: 1, name: 'Jefe de Área', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-      { id: 2, name: 'Docente', createdAt: '2026-01-02T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
+      { id: 1, name: 'Jefe de Área', exclusive: false, singleSpecialty: false, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+      { id: 2, name: 'Docente', exclusive: false, singleSpecialty: false, createdAt: '2026-01-02T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
     ]);
 
     renderRoles();
@@ -67,11 +67,13 @@ describe('RolesPage', () => {
     vi.mocked(rolesApi.findAll)
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
-        { id: 3, name: 'Nodocente', createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z' },
+        { id: 3, name: 'Nodocente', exclusive: false, singleSpecialty: false, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z' },
       ]);
     vi.mocked(rolesApi.create).mockResolvedValueOnce({
       id: 3,
       name: 'Nodocente',
+      exclusive: false,
+      singleSpecialty: false,
       createdAt: '2026-03-01T00:00:00Z',
       updatedAt: '2026-03-01T00:00:00Z',
     });
@@ -85,21 +87,49 @@ describe('RolesPage', () => {
 
     await waitFor(
       () => {
-        expect(rolesApi.create).toHaveBeenCalledWith({ name: 'Nodocente' });
+        expect(rolesApi.create).toHaveBeenCalledWith({ name: 'Nodocente', exclusive: false, single_specialty: false });
         expect(screen.getByText('Nodocente')).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
   });
 
+  it('debería crear un cargo con reglas y mostrarlas en la tabla', async () => {
+    vi.mocked(rolesApi.findAll)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { id: 4, name: 'Alumno', exclusive: true, singleSpecialty: true, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z' },
+      ]);
+    vi.mocked(rolesApi.create).mockResolvedValueOnce({
+      id: 4, name: 'Alumno', exclusive: true, singleSpecialty: true,
+      createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z',
+    });
+
+    renderRoles();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Nuevo cargo/i }));
+    expect(await screen.findByText(/no se pueden cambiar después/i)).toBeInTheDocument();
+    const nameInput = await screen.findByLabelText(/Nombre/i);
+    fireEvent.change(nameInput, { target: { value: 'Alumno' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /No se combina con otros cargos/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Exactamente una especialidad/i }));
+    fireEvent.submit(nameInput.closest('form')!);
+
+    await waitFor(() => {
+      expect(rolesApi.create).toHaveBeenCalledWith({ name: 'Alumno', exclusive: true, single_specialty: true });
+    });
+    expect(await screen.findByText('No: debe ser el único cargo')).toBeInTheDocument();
+    expect(screen.getByText('Exactamente una')).toBeInTheDocument();
+  });
+
   it('debería eliminar un cargo y manejar error si tiene usuarios asignados', async () => {
     vi.mocked(rolesApi.findAll)
       .mockResolvedValueOnce([
-        { id: 1, name: 'Temporal', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-        { id: 2, name: 'Alumno', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+        { id: 1, name: 'Temporal', exclusive: false, singleSpecialty: false, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+        { id: 2, name: 'Alumno', exclusive: false, singleSpecialty: false, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
       ])
       .mockResolvedValueOnce([
-        { id: 2, name: 'Alumno', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+        { id: 2, name: 'Alumno', exclusive: false, singleSpecialty: false, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
       ]);
     vi.mocked(rolesApi.remove)
       .mockResolvedValueOnce(undefined)

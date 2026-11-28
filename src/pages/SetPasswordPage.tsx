@@ -5,10 +5,8 @@ import { IconAlertCircle, IconCheck } from '@tabler/icons-react';
 import { apiClient } from '@/api/client';
 import { UserPageLayout } from '@/components/layout/UserPageLayout';
 import { getErrorMessage, isNetworkError } from '@/utils/apiError';
-
-// bcrypt solo tiene en cuenta los primeros 72 bytes de una contraseña; el backend rechaza las más largas.
-// Se cuentan bytes y no caracteres: una tilde o la ñ pesan 2.
-const MAX_PASSWORD_BYTES = 72;
+import { passwordPolicyError } from '@/utils/passwordPolicy';
+import { PasswordRequirements } from '@/components/ui/PasswordRequirements';
 
 function formatTokenError(err: unknown): string {
   const ax = err as { response?: { data?: { message?: string | string[] } } };
@@ -77,12 +75,10 @@ export function SetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Primero la política (dice de una todo lo que falta) y después la coincidencia.
+    const policyError = passwordPolicyError(password);
+    if (policyError) { setFormError(policyError); return; }
     if (password !== confirm) { setFormError('Las contraseñas no coinciden.'); return; }
-    if (password.length < 8) { setFormError('La contraseña debe tener al menos 8 caracteres.'); return; }
-    if (new TextEncoder().encode(password).length > MAX_PASSWORD_BYTES) {
-      setFormError('La contraseña no puede superar los 72 bytes (unos 72 caracteres; las tildes y la ñ cuentan doble).');
-      return;
-    }
     setFormError(null); setLoading(true);
     try {
       await apiClient.post('/sso/set-password', { token, password, confirmPassword: confirm });
@@ -131,7 +127,7 @@ export function SetPasswordPage() {
           )}
 
           <Text c="dimmed" size="sm" ta="center" mb="xl">
-            Elegí una contraseña de al menos 8 caracteres para tu cuenta. El máximo es de 72 bytes (unos 72 caracteres; las tildes y la ñ cuentan doble).
+            Elegí una contraseña segura para tu cuenta.
           </Text>
           <form onSubmit={e => void handleSubmit(e)}>
             <PasswordInput
@@ -139,11 +135,12 @@ export function SetPasswordPage() {
               placeholder="••••••••"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              mb="sm"
+              mb="xs"
               required
-              minLength={8}
               maxLength={128}
+              autoComplete="new-password"
             />
+            <PasswordRequirements password={password} />
             <PasswordInput
               label="Confirmar contraseña"
               placeholder="••••••••"
@@ -151,8 +148,8 @@ export function SetPasswordPage() {
               onChange={e => setConfirm(e.target.value)}
               mb="lg"
               required
-              minLength={8}
               maxLength={128}
+              autoComplete="new-password"
             />
             <Button type="submit" fullWidth loading={loading}>
               Guardar contraseña
